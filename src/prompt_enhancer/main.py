@@ -24,6 +24,7 @@ console = Console()
 # Pipeline
 # ---------------------------------------------------------------------------
 
+
 async def run_pipeline(
     config: AppConfig,
     voice: bool = True,
@@ -112,15 +113,10 @@ async def run_pipeline(
     fallback = build_fallback_prompt(summary)
 
     try:
-        result = await enhance_prompt(
-            meta_prompt, config.llm, fallback_text=fallback
-        )
+        result = await enhance_prompt(meta_prompt, config.llm, fallback_text=fallback)
         enhanced = result.text
         if result.used_fallback:
-            console.print(
-                f"[yellow]LLM unavailable ({result.error}), "
-                "using template fallback.[/]"
-            )
+            console.print(f"[yellow]LLM unavailable ({result.error}), using template fallback.[/]")
             await notify_fallback(result.error or "unknown error")
     except Exception:
         logger.warning("LLM unavailable, using template fallback")
@@ -143,6 +139,7 @@ async def run_pipeline(
 # ---------------------------------------------------------------------------
 # Hotkey Daemon
 # ---------------------------------------------------------------------------
+
 
 async def run_hotkey_daemon(config: AppConfig) -> None:
     """Start the global hotkey listener daemon."""
@@ -231,6 +228,7 @@ async def run_hotkey_daemon(config: AppConfig) -> None:
 # CLI Commands
 # ---------------------------------------------------------------------------
 
+
 @app.command()
 def start(
     config_file: Path | None = typer.Option(None, "--config", "-c", help="Path to config.yaml"),
@@ -287,21 +285,16 @@ def enhance(
             fallback = build_fallback_prompt(summary)
 
             try:
-                res = await do_enhance(
-                    meta, config.llm, fallback_text=fallback
-                )
+                res = await do_enhance(meta, config.llm, fallback_text=fallback)
                 enhanced = res.text
                 if res.used_fallback:
                     console.print(
-                        f"[yellow]LLM unavailable ({res.error}), "
-                        "using template fallback.[/]"
+                        f"[yellow]LLM unavailable ({res.error}), using template fallback.[/]"
                     )
             except Exception:
                 enhanced = fallback
 
-            console.print(
-                Panel(enhanced, title="Enhanced Prompt", border_style="green")
-            )
+            console.print(Panel(enhanced, title="Enhanced Prompt", border_style="green"))
             await deliver_to_clipboard(enhanced)
 
         asyncio.run(_run())
@@ -339,27 +332,31 @@ def context(
         ctx = builder.build(state)
         summary = builder.build_summary(ctx)
 
-        console.print(Panel(
-            "\n".join(
-                f"[cyan]{k}:[/] {v}"
-                for k, v in summary.items()
-                if k != "screen_buffer_last_50"
-            ),
-            title=f"Terminal Context (backend: {be.name})",
-            border_style="blue",
-        ))
+        console.print(
+            Panel(
+                "\n".join(
+                    f"[cyan]{k}:[/] {v}" for k, v in summary.items() if k != "screen_buffer_last_50"
+                ),
+                title=f"Terminal Context (backend: {be.name})",
+                border_style="blue",
+            )
+        )
         if state.screen_buffer:
-            console.print(Panel(
-                state.screen_buffer[-2000:],
-                title="Screen Buffer (last lines)",
-                border_style="dim",
-            ))
+            console.print(
+                Panel(
+                    state.screen_buffer[-2000:],
+                    title="Screen Buffer (last lines)",
+                    border_style="dim",
+                )
+            )
         if summary.get("detected_errors") != "none detected":
-            console.print(Panel(
-                summary["detected_errors"],
-                title="Detected Errors",
-                border_style="red",
-            ))
+            console.print(
+                Panel(
+                    summary["detected_errors"],
+                    title="Detected Errors",
+                    border_style="red",
+                )
+            )
 
     asyncio.run(_run())
 
@@ -367,7 +364,8 @@ def context(
 @app.command()
 def install_hook(
     shell: str = typer.Option(
-        "", "--shell",
+        "",
+        "--shell",
         help="Shell type (zsh/bash/fish). Auto-detects if empty.",
     ),
 ):
@@ -398,6 +396,7 @@ def init():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _setup_logging(verbose: bool = False) -> None:
     level = logging.DEBUG if verbose else logging.INFO

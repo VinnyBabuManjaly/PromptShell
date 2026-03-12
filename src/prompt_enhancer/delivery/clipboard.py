@@ -69,6 +69,7 @@ async def deliver_to_clipboard(text: str) -> bool:
     # Fallback to pyperclip
     try:
         import pyperclip
+
         pyperclip.copy(text)
         logger.info("Enhanced prompt copied to clipboard via pyperclip (%d chars)", len(text))
         return True
@@ -98,6 +99,7 @@ async def read_from_clipboard() -> str:
     # Fallback to pyperclip
     try:
         import pyperclip
+
         return pyperclip.paste()
     except Exception:
         return ""

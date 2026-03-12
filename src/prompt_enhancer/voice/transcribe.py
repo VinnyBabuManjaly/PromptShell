@@ -52,6 +52,7 @@ class WhisperLocalEngine(TranscriptionEngine):
             return
         try:
             from faster_whisper import WhisperModel
+
             logger.info(
                 "Loading Whisper model '%s' (first load may download ~150MB)...",
                 self._model_size,
@@ -99,6 +100,7 @@ class WhisperLocalEngine(TranscriptionEngine):
     def is_available(self) -> bool:
         try:
             import faster_whisper  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -117,6 +119,7 @@ class WhisperAPIEngine(TranscriptionEngine):
         api_key = self._api_key
         if not api_key:
             import os
+
             api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OpenAI API key required for Whisper API engine")
@@ -146,6 +149,7 @@ class WhisperAPIEngine(TranscriptionEngine):
             import os
 
             import httpx  # noqa: F401
+
             return bool(self._api_key or os.environ.get("OPENAI_API_KEY"))
         except ImportError:
             return False
@@ -170,6 +174,7 @@ class AppleSpeechEngine(TranscriptionEngine):
             request = Speech.SFSpeechURLRecognitionRequest.alloc().initWithURL_(url)
 
             import asyncio
+
             loop = asyncio.get_event_loop()
             result_future = loop.create_future()
 
@@ -194,15 +199,14 @@ class AppleSpeechEngine(TranscriptionEngine):
     def is_available(self) -> bool:
         try:
             import Speech  # noqa: F401
+
             return True
         except ImportError:
             return False
 
 
 def create_engine(
-    engine_type: Literal[
-        "whisper_local", "whisper_api", "apple_speech"
-    ] = "whisper_local",
+    engine_type: Literal["whisper_local", "whisper_api", "apple_speech"] = "whisper_local",
     model_size: str = "base.en",
     api_key: str | None = None,
 ) -> TranscriptionEngine:
@@ -215,9 +219,7 @@ def create_engine(
 
     engine = engines[engine_type]()
     if not engine.is_available():
-        logger.warning(
-            "Requested engine '%s' is not available, falling back...", engine_type
-        )
+        logger.warning("Requested engine '%s' is not available, falling back...", engine_type)
         # Try fallback order
         for fallback_type in ["whisper_local", "apple_speech", "whisper_api"]:
             if fallback_type != engine_type:
@@ -227,8 +229,7 @@ def create_engine(
                     return fallback
 
         raise RuntimeError(
-            "No transcription engine available. "
-            "Install faster-whisper: pip install faster-whisper"
+            "No transcription engine available. Install faster-whisper: pip install faster-whisper"
         )
 
     return engine

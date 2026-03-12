@@ -18,6 +18,7 @@ from prompt_enhancer.enhancer.llm_client import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_config(**overrides) -> LLMConfig:
     defaults = {"provider": "openai", "model": "gpt-4o-mini", "api_key": "sk-test"}
     defaults.update(overrides)
@@ -38,6 +39,7 @@ def _mock_response(text: str) -> MagicMock:
 # ---------------------------------------------------------------------------
 # _is_transient
 # ---------------------------------------------------------------------------
+
 
 class TestIsTransient:
     def test_connection_error(self):
@@ -79,6 +81,7 @@ class TestIsTransient:
 # ---------------------------------------------------------------------------
 # LLMClient.complete — retry behaviour
 # ---------------------------------------------------------------------------
+
 
 class TestLLMClientRetry:
     @pytest.mark.asyncio
@@ -157,6 +160,7 @@ class TestLLMClientRetry:
 # enhance_prompt — fallback & EnhanceResult
 # ---------------------------------------------------------------------------
 
+
 class TestEnhancePrompt:
     @pytest.mark.asyncio
     async def test_success_returns_result(self):
@@ -177,9 +181,7 @@ class TestEnhancePrompt:
 
         with patch("litellm.acompletion", new_callable=AsyncMock) as mock:
             mock.side_effect = ConnectionError("refused")
-            result = await enhance_prompt(
-                "meta", config, fallback_text="fallback text"
-            )
+            result = await enhance_prompt("meta", config, fallback_text="fallback text")
 
         assert isinstance(result, EnhanceResult)
         assert result.text == "fallback text"
@@ -204,9 +206,7 @@ class TestEnhancePrompt:
 
         with patch("litellm.acompletion", new_callable=AsyncMock) as mock:
             mock.side_effect = perm
-            result = await enhance_prompt(
-                "meta", config, fallback_text="safe"
-            )
+            result = await enhance_prompt("meta", config, fallback_text="safe")
 
         assert result.used_fallback is True
         assert "invalid model" in result.error

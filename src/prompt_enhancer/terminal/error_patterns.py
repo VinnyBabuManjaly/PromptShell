@@ -140,6 +140,7 @@ class ErrorDetectionEngine:
         except re.error:
             logger_msg = f"Invalid regex in error pattern '{spec.get('name', '?')}'"
             import logging
+
             logging.getLogger(__name__).warning(logger_msg)
             return
 

@@ -49,6 +49,7 @@ def test_command_record():
 
 # --- Shell history reader ---
 
+
 def test_read_shell_history_empty():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".history", delete=False) as f:
         f.write("")
@@ -81,6 +82,7 @@ def test_read_shell_history_bash_format():
 
 # --- Backend availability ---
 
+
 def test_generic_backend_always_available():
     backend = GenericBackend()
     assert backend.is_available() is True
@@ -109,6 +111,7 @@ def test_shell_hook_backend_name():
 
 # --- Shell hook state file ---
 
+
 def test_shell_hook_reads_state_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         state_file = Path(tmpdir) / "state-12345.json"
@@ -131,6 +134,7 @@ def test_shell_hook_reads_state_file():
 
 # --- create_backend factory ---
 
+
 def test_create_backend_generic():
     backend = create_backend("generic")
     assert isinstance(backend, GenericBackend)
@@ -148,6 +152,7 @@ def test_create_backend_unknown():
 
 # --- GenericBackend snapshot ---
 
+
 @pytest.mark.asyncio
 async def test_generic_backend_snapshot():
     backend = GenericBackend()
@@ -159,6 +164,7 @@ async def test_generic_backend_snapshot():
 
 
 # --- ShellHookBackend snapshot with state file ---
+
 
 @pytest.mark.asyncio
 async def test_shell_hook_snapshot_with_state():
@@ -198,6 +204,7 @@ async def test_shell_hook_snapshot_no_state_file():
 
 # --- Shell hook install ---
 
+
 def test_get_hook_script_zsh():
     script = ShellHookBackend.get_hook_script("zsh")
     assert "add-zsh-hook" in script
@@ -215,6 +222,7 @@ def test_get_hook_script_fish():
 
 
 # --- Git branch detection ---
+
 
 @pytest.mark.asyncio
 async def test_git_branch_detection():

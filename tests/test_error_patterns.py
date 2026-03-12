@@ -17,13 +17,13 @@ def test_typescript_error():
 
 def test_python_traceback():
     engine = ErrorDetectionEngine()
-    text = '''Traceback (most recent call last):
+    text = """Traceback (most recent call last):
   File "/app/server.py", line 87, in handle_request
     result = process(data)
   File "/app/utils.py", line 12, in process
     return data["key"]
 KeyError: 'key'
-'''
+"""
     errors = engine.detect(text)
     files = [e for e in errors if e.error_type == "python_traceback"]
     assert len(files) >= 2

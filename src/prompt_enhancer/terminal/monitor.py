@@ -36,6 +36,7 @@ STATE_FILE_PATTERN = "state-{pid}.json"
 # Data classes (shared across all backends)
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class CommandRecord:
     """A single command from the session history."""
@@ -60,14 +61,13 @@ class TerminalState:
     username: str | None = None
     session_id: str | None = None
     backend: str = ""
-    captured_at: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    captured_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 # ---------------------------------------------------------------------------
 # Abstract backend
 # ---------------------------------------------------------------------------
+
 
 class TerminalBackend(ABC):
     """Abstract base for terminal state capture backends."""
@@ -109,6 +109,7 @@ class TerminalBackend(ABC):
 # Shell history reader (shared utility)
 # ---------------------------------------------------------------------------
 
+
 def _read_shell_history(shell: str = "", max_commands: int = 10) -> list[CommandRecord]:
     """Read recent commands from the shell history file."""
     history_files = []
@@ -121,9 +122,7 @@ def _read_shell_history(shell: str = "", max_commands: int = 10) -> list[Command
     elif "bash" in shell_name:
         history_files.append(Path.home() / ".bash_history")
     elif "fish" in shell_name:
-        history_files.append(
-            Path.home() / ".local" / "share" / "fish" / "fish_history"
-        )
+        history_files.append(Path.home() / ".local" / "share" / "fish" / "fish_history")
 
     # Fallback: try common locations
     if not history_files:
@@ -146,7 +145,7 @@ def _read_shell_history(shell: str = "", max_commands: int = 10) -> list[Command
                 text = raw.decode("latin-1")
 
             lines = text.strip().split("\n")
-            for line in lines[-max_commands * 2:]:
+            for line in lines[-max_commands * 2 :]:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
@@ -175,7 +174,7 @@ def _read_shell_history(shell: str = "", max_commands: int = 10) -> list[Command
 # Backend: Shell Hook (universal, works on any terminal)
 # ---------------------------------------------------------------------------
 
-SHELL_HOOK_ZSH = r'''
+SHELL_HOOK_ZSH = r"""
 # prompt-enhancer shell hook (zsh)
 __prompt_enhancer_state_dir="${XDG_RUNTIME_DIR:-/tmp}/prompt-enhancer"
 mkdir -p "$__prompt_enhancer_state_dir"
@@ -199,9 +198,9 @@ __prompt_enhancer_precmd() {
 autoload -Uz add-zsh-hook
 add-zsh-hook preexec __prompt_enhancer_preexec
 add-zsh-hook precmd __prompt_enhancer_precmd
-'''
+"""
 
-SHELL_HOOK_BASH = r'''
+SHELL_HOOK_BASH = r"""
 # prompt-enhancer shell hook (bash)
 __prompt_enhancer_state_dir="${XDG_RUNTIME_DIR:-/tmp}/prompt-enhancer"
 mkdir -p "$__prompt_enhancer_state_dir"
@@ -222,9 +221,9 @@ __prompt_enhancer_prompt_command() {
 }
 
 PROMPT_COMMAND="__prompt_enhancer_prompt_command${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
-'''
+"""
 
-SHELL_HOOK_FISH = r'''
+SHELL_HOOK_FISH = r"""
 # prompt-enhancer shell hook (fish)
 set -g __prompt_enhancer_state_dir (test -n "$XDG_RUNTIME_DIR"; and echo "$XDG_RUNTIME_DIR"; or echo "/tmp")"/prompt-enhancer"
 mkdir -p $__prompt_enhancer_state_dir
@@ -238,7 +237,7 @@ function __prompt_enhancer_postexec --on-event fish_postexec
         $exit_code (date +%s) (hostname -s) "$USER" \
         > $__prompt_enhancer_state_file
 end
-'''
+"""
 
 
 class ShellHookBackend(TerminalBackend):
@@ -373,6 +372,7 @@ class ShellHookBackend(TerminalBackend):
 # Backend: tmux
 # ---------------------------------------------------------------------------
 
+
 class TmuxBackend(TerminalBackend):
     """Backend for tmux users — capture-pane, display-message, etc."""
 
@@ -426,7 +426,9 @@ class TmuxBackend(TerminalBackend):
         try:
             result = subprocess.run(
                 ["tmux", "capture-pane", "-p", "-S", f"-{self._buffer_lines}"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True,
+                text=True,
+                timeout=5,
             )
             return result.stdout.rstrip() if result.returncode == 0 else ""
         except Exception:
@@ -446,7 +448,9 @@ class TmuxBackend(TerminalBackend):
             try:
                 result = subprocess.run(
                     ["tmux", "display-message", "-p", fmt],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if result.returncode == 0:
                     info[key] = result.stdout.strip()
@@ -459,6 +463,7 @@ class TmuxBackend(TerminalBackend):
 # Backend: iTerm2 (macOS only, optional)
 # ---------------------------------------------------------------------------
 
+
 class ITerm2Backend(TerminalBackend):
     """macOS iTerm2 backend using the iTerm2 Python API."""
 
@@ -469,6 +474,7 @@ class ITerm2Backend(TerminalBackend):
             return False
         try:
             import iterm2  # noqa: F401
+
             return True
         except ImportError:
             return False
@@ -518,7 +524,7 @@ class ITerm2Backend(TerminalBackend):
                         buffer_lines.append(line.string)
                     except Exception:
                         break
-            buffer_lines = buffer_lines[-self._buffer_lines:]
+            buffer_lines = buffer_lines[-self._buffer_lines :]
 
             # Command history via prompt marks
             commands: list[CommandRecord] = []
@@ -574,6 +580,7 @@ class ITerm2Backend(TerminalBackend):
 # Backend: Generic (fallback — shell history + CWD detection)
 # ---------------------------------------------------------------------------
 
+
 class GenericBackend(TerminalBackend):
     """Fallback backend — reads shell history, detects CWD via /proc or lsof."""
 
@@ -628,7 +635,9 @@ class GenericBackend(TerminalBackend):
             try:
                 result = subprocess.run(
                     ["lsof", "-p", str(pid), "-Fn"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
                 )
                 if result.returncode == 0:
                     for line in result.stdout.split("\n"):
@@ -646,6 +655,7 @@ class GenericBackend(TerminalBackend):
 # ---------------------------------------------------------------------------
 # Auto-detection and factory
 # ---------------------------------------------------------------------------
+
 
 def detect_backend(screen_buffer_lines: int = 100) -> TerminalBackend:
     """Auto-detect the best available terminal backend.
@@ -694,9 +704,7 @@ def create_backend(
 
     backend = cls(screen_buffer_lines, **kwargs)
     if not backend.is_available():
-        logger.warning(
-            "Backend '%s' is not available, falling back to auto-detect", backend_type
-        )
+        logger.warning("Backend '%s' is not available, falling back to auto-detect", backend_type)
         return detect_backend(screen_buffer_lines)
 
     return backend

@@ -31,6 +31,7 @@ def _is_transient(exc: Exception) -> bool:
     # httpx network errors
     try:
         import httpx
+
         if isinstance(exc, (httpx.ConnectError, httpx.TimeoutException)):
             return True
     except ImportError:
@@ -132,9 +133,7 @@ class LLMClient:
                 )
 
                 result = response.choices[0].message.content.strip()
-                logger.debug(
-                    "LLM response length: %d chars", len(result)
-                )
+                logger.debug("LLM response length: %d chars", len(result))
                 return result
 
             except Exception as e:
@@ -159,6 +158,7 @@ class LLMClient:
         try:
             if self._config.provider == "ollama":
                 import httpx
+
                 async with httpx.AsyncClient() as client:
                     resp = await client.get(
                         "http://localhost:11434/api/tags",
@@ -166,10 +166,7 @@ class LLMClient:
                     )
                     return resp.status_code == 200
             # For cloud providers, assume available if API key is set
-            return (
-                bool(self._config.resolve_api_key())
-                or self._config.provider == "ollama"
-            )
+            return bool(self._config.resolve_api_key()) or self._config.provider == "ollama"
         except Exception:
             return False
 
@@ -193,13 +190,9 @@ async def enhance_prompt(
     except Exception as e:
         error_msg = str(e)
         if _is_transient(e):
-            logger.warning(
-                "LLM failed after retries (transient): %s", error_msg
-            )
+            logger.warning("LLM failed after retries (transient): %s", error_msg)
         else:
-            logger.warning(
-                "LLM failed (permanent — check config): %s", error_msg
-            )
+            logger.warning("LLM failed (permanent — check config): %s", error_msg)
 
         if fallback_text:
             return EnhanceResult(

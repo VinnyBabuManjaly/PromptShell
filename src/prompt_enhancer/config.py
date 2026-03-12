@@ -87,5 +87,6 @@ def init_config_dir() -> Path:
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     if not CONFIG_FILE.exists() and DEFAULT_CONFIG.exists():
         import shutil
+
         shutil.copy(DEFAULT_CONFIG, CONFIG_FILE)
     return CONFIG_DIR

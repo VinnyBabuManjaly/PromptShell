@@ -26,9 +26,7 @@ class ProjectInfo:
 class ContextPayload:
     """Complete context payload sent to the prompt enhancer."""
 
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(UTC).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     voice_transcript: str = ""
     terminal: TerminalState = field(default_factory=TerminalState)
     detected_errors: list[DetectedError] = field(default_factory=list)
@@ -95,9 +93,7 @@ class ContextBuilder:
         # Also check last command output for errors
         for cmd in terminal_state.last_commands:
             if cmd.exit_code and cmd.exit_code != 0:
-                logger.debug(
-                    "Command '%s' exited with code %d", cmd.command, cmd.exit_code
-                )
+                logger.debug("Command '%s' exited with code %d", cmd.command, cmd.exit_code)
 
         # Detect project type
         project = detect_project(terminal_state.cwd)
@@ -137,9 +133,7 @@ class ContextBuilder:
             "git_branch": context.terminal.git_branch or "unknown",
             "running_process": context.terminal.running_process,
             "last_commands": "\n".join(cmd_summaries) or "none",
-            "screen_buffer_last_50": "\n".join(
-                context.terminal.screen_buffer.split("\n")[-50:]
-            ),
+            "screen_buffer_last_50": "\n".join(context.terminal.screen_buffer.split("\n")[-50:]),
             "detected_errors": "\n".join(error_summaries) or "none detected",
             "project_type": context.project.project_type or "unknown",
             "project_name": context.project.project_name or "unknown",
