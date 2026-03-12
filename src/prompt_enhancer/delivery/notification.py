@@ -126,6 +126,16 @@ async def notify_error(error_message: str) -> bool:
     )
 
 
+async def notify_fallback(error_message: str) -> bool:
+    """Notify the user that the LLM failed and a fallback was used."""
+    return await show_notification(
+        title="Prompt Enhancer",
+        subtitle="LLM unavailable — used template fallback",
+        message=error_message,
+        sound=True,
+    )
+
+
 async def notify_listening() -> bool:
     """Show a notification that the service is listening."""
     return await show_notification(

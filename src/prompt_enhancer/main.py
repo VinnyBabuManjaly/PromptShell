@@ -41,6 +41,7 @@ async def run_pipeline(
     from prompt_enhancer.delivery.notification import (
         notify_enhanced_prompt,
         notify_error,
+        notify_fallback,
         notify_listening,
     )
     from prompt_enhancer.enhancer.llm_client import enhance_prompt
@@ -111,7 +112,16 @@ async def run_pipeline(
     fallback = build_fallback_prompt(summary)
 
     try:
-        enhanced = await enhance_prompt(meta_prompt, config.llm, fallback_text=fallback)
+        result = await enhance_prompt(
+            meta_prompt, config.llm, fallback_text=fallback
+        )
+        enhanced = result.text
+        if result.used_fallback:
+            console.print(
+                f"[yellow]LLM unavailable ({result.error}), "
+                "using template fallback.[/]"
+            )
+            await notify_fallback(result.error or "unknown error")
     except Exception:
         logger.warning("LLM unavailable, using template fallback")
         enhanced = fallback
@@ -277,12 +287,22 @@ def enhance(
             fallback = build_fallback_prompt(summary)
 
             try:
-                result = await do_enhance(meta, config.llm, fallback_text=fallback)
+                res = await do_enhance(
+                    meta, config.llm, fallback_text=fallback
+                )
+                enhanced = res.text
+                if res.used_fallback:
+                    console.print(
+                        f"[yellow]LLM unavailable ({res.error}), "
+                        "using template fallback.[/]"
+                    )
             except Exception:
-                result = fallback
+                enhanced = fallback
 
-            console.print(Panel(result, title="Enhanced Prompt", border_style="green"))
-            await deliver_to_clipboard(result)
+            console.print(
+                Panel(enhanced, title="Enhanced Prompt", border_style="green")
+            )
+            await deliver_to_clipboard(enhanced)
 
         asyncio.run(_run())
     elif voice:
