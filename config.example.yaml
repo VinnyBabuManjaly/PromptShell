@@ -1,0 +1,34 @@
+# Terminal
+terminal:
+  backend: auto                # auto | shell_hook | tmux | iterm2 | generic
+  screen_buffer_lines: 100
+  poll_interval_ms: 2000
+
+# Voice
+voice:
+  engine: whisper_local        # whisper_local | whisper_api | apple_speech
+  whisper_model: base.en       # tiny.en | base.en | small.en
+  silence_threshold_sec: 1.0
+  max_duration_sec: 30
+  vad_aggressiveness: 2
+
+# LLM
+llm:
+  provider: ollama             # ollama | openai | anthropic
+  model: llama3.2:8b
+  # api_key: ${OPENAI_API_KEY}
+  temperature: 0.3
+  max_tokens: 500
+
+# Delivery
+delivery:
+  method: clipboard            # clipboard | iterm_paste | api | file
+  show_notification: true
+  notification_preview_chars: 100
+
+# Hotkeys
+hotkeys:
+  activate: ctrl+shift+p
+  context_only: ctrl+shift+l
+  re_enhance: ctrl+shift+r
+  cancel: escape
