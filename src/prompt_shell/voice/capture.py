@@ -12,7 +12,6 @@ from enum import Enum
 from pathlib import Path
 
 import numpy as np
-import sounddevice as sd
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +98,8 @@ class VoiceCapture:
 
         # Record in a thread to avoid blocking the event loop
         audio_queue: asyncio.Queue[np.ndarray | None] = asyncio.Queue()
+
+        import sounddevice as sd  # lazy import — only needed when actually recording
 
         def _audio_callback(indata, frame_count, time_info, status):
             if status:
