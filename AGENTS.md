@@ -1,4 +1,4 @@
-# PromptPulse — Development Guide
+# PromptShell — Development Guide
 
 ## Prerequisites
 
@@ -19,26 +19,26 @@
 ## Quick Start
 
 ```bash
-cd prompt-pulse
+cd prompt-shell
 
 # Install dependencies
 uv sync
 
 # Initialize config directory
-uv run prompt-pulse init
+uv run prompt-shell init
 
 # Install the shell hook (for terminal state capture)
-uv run prompt-pulse install-hook
-# Then restart your shell or: source ~/.prompt-pulse/hook.zsh
+uv run prompt-shell install-hook
+# Then restart your shell or: source ~/.prompt-shell/hook.zsh
 
 # Run a single enhancement (text mode, no voice/terminal needed)
-uv run prompt-pulse enhance "fix the build error"
+uv run prompt-shell enhance "fix the build error"
 
 # Run with voice input
-uv run prompt-pulse enhance --voice
+uv run prompt-shell enhance --voice
 
 # Start the daemon with global hotkeys
-uv run prompt-pulse start
+uv run prompt-shell start
 ```
 
 ## Terminal Backends
@@ -49,7 +49,7 @@ The service auto-detects the best backend for your environment:
 |---------|:---:|:---:|:---:|:---:|-------|
 | **tmux** | Yes | Yes | Yes | Via hook | Be inside tmux |
 | **iterm2** | Yes | Yes | Yes | Yes | `uv sync --extra iterm2` + enable API |
-| **shell_hook** | No | Yes | Yes | Yes | `prompt-pulse install-hook` |
+| **shell_hook** | No | Yes | Yes | Yes | `prompt-shell install-hook` |
 | **generic** | No | Yes | Partial (history) | No | None |
 
 Auto-detection priority: `tmux` > `iterm2` > `shell_hook` > `generic`
@@ -62,11 +62,11 @@ The shell hook is a lightweight precmd/preexec addition to your shell that write
 
 ```bash
 # Auto-detect and install
-prompt-pulse install-hook
+prompt-shell install-hook
 
 # Or specify shell explicitly
-prompt-pulse install-hook --shell bash
-prompt-pulse install-hook --shell fish
+prompt-shell install-hook --shell bash
+prompt-shell install-hook --shell fish
 ```
 
 ## Build & Test
@@ -114,7 +114,7 @@ src/prompt_pulse/
 
 ## Configuration
 
-Config file: `~/.prompt-pulse/config.yaml`
+Config file: `~/.prompt-shell/config.yaml`
 
 See `config.example.yaml` for all available options.
 
@@ -171,14 +171,14 @@ terminal:
 
 | Command | Description |
 |---------|-------------|
-| `prompt-pulse start` | Start daemon with hotkeys |
-| `prompt-pulse enhance "text"` | Enhance text directly |
-| `prompt-pulse enhance --voice` | Voice input mode |
-| `prompt-pulse enhance --clipboard` | Enhance clipboard contents |
-| `prompt-pulse context` | Show current terminal context |
-| `prompt-pulse context --backend tmux` | Use specific backend |
-| `prompt-pulse install-hook` | Install shell hook |
-| `prompt-pulse init` | Create config directory |
+| `prompt-shell start` | Start daemon with hotkeys |
+| `prompt-shell enhance "text"` | Enhance text directly |
+| `prompt-shell enhance --voice` | Voice input mode |
+| `prompt-shell enhance --clipboard` | Enhance clipboard contents |
+| `prompt-shell context` | Show current terminal context |
+| `prompt-shell context --backend tmux` | Use specific backend |
+| `prompt-shell install-hook` | Install shell hook |
+| `prompt-shell init` | Create config directory |
 
 ## Google Cloud Run Deployment
 
@@ -193,10 +193,10 @@ gcloud config set project YOUR_PROJECT_ID
 gcloud services enable run.googleapis.com containerregistry.googleapis.com
 
 # Build and deploy the Cloud Run service
-gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-pulse-enhancer ./cloud_run_service/
+gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-shell-enhancer ./cloud_run_service/
 
-gcloud run deploy prompt-pulse-enhancer \
-  --image gcr.io/$PROJECT_ID/prompt-pulse-enhancer \
+gcloud run deploy prompt-shell-enhancer \
+  --image gcr.io/$PROJECT_ID/prompt-shell-enhancer \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
@@ -206,11 +206,11 @@ gcloud run deploy prompt-pulse-enhancer \
   --max-instances 10
 
 # Get service URL and add to local config
-export CLOUD_RUN_URL=$(gcloud run services describe prompt-pulse-enhancer \
+export CLOUD_RUN_URL=$(gcloud run services describe prompt-shell-enhancer \
   --region us-central1 --format 'value(status.url)')
 ```
 
-Update `~/.prompt-pulse/config.yaml`:
+Update `~/.prompt-shell/config.yaml`:
 ```yaml
 llm:
   provider: gemini
@@ -231,7 +231,7 @@ curl -X POST $CLOUD_RUN_URL/enhance \
 
 ## Troubleshooting
 
-- **"No terminal context"**: Install the shell hook (`prompt-pulse install-hook`) or use tmux
+- **"No terminal context"**: Install the shell hook (`prompt-shell install-hook`) or use tmux
 - **"Cannot connect to iTerm2"**: Enable Python API in iTerm2 Settings > General > Magic
 - **"No speech detected"**: Check microphone permissions in System Settings
 - **"Enhancement service unreachable"**: Check `CLOUD_RUN_URL` in config; run `curl $CLOUD_RUN_URL/health` to verify

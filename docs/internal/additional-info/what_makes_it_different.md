@@ -28,7 +28,7 @@ What already exists (overlapping pieces)
   ---
   The real differentiator
 
-  Most tools are conversational (you type, they respond) or IDE-embedded. prompt-pulse is a passive daemon that enhances intent — you stay in your workflow, hit a hotkey, speak vaguely, and get a precise prompt back. That synthesis step (vague → precise) is what nothing else
+  Most tools are conversational (you type, they respond) or IDE-embedded. prompt-shell is a passive daemon that enhances intent — you stay in your workflow, hit a hotkey, speak vaguely, and get a precise prompt back. That synthesis step (vague → precise) is what nothing else
   does.
 
   So: the pieces exist, but the combination doesn't. That's a defensible niche.

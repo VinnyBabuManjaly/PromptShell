@@ -30,7 +30,7 @@ _SUMMARY = {
     "running_process": "node",
 }
 
-_CLOUD_RUN_URL = "https://prompt-pulse-abc123-uc.a.run.app"
+_CLOUD_RUN_URL = "https://prompt-shell-abc123-uc.a.run.app"
 
 
 # ---------------------------------------------------------------------------

@@ -88,10 +88,10 @@ def test_gemini_provider_accepted():
     config = LLMConfig(
         provider="gemini",
         model="gemini-2.0-flash",
-        cloud_run_url="https://prompt-pulse-abc123-uc.a.run.app",
+        cloud_run_url="https://prompt-shell-abc123-uc.a.run.app",
     )
     assert config.provider == "gemini"
-    assert config.cloud_run_url == "https://prompt-pulse-abc123-uc.a.run.app"
+    assert config.cloud_run_url == "https://prompt-shell-abc123-uc.a.run.app"
 
 
 def test_cloud_run_url_env_var_resolution(monkeypatch):

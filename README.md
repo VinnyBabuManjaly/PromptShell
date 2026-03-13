@@ -1,7 +1,7 @@
-# prompt-pulse
+# prompt-shell
 
-[![CI](https://github.com/disencd/prompt-pulse/actions/workflows/ci.yml/badge.svg)](https://github.com/disencd/prompt-pulse/actions/workflows/ci.yml)
-[![Security](https://github.com/disencd/prompt-pulse/actions/workflows/security.yml/badge.svg)](https://github.com/disencd/prompt-pulse/actions/workflows/security.yml)
+[![CI](https://github.com/disencd/prompt-shell/actions/workflows/ci.yml/badge.svg)](https://github.com/disencd/prompt-shell/actions/workflows/ci.yml)
+[![Security](https://github.com/disencd/prompt-shell/actions/workflows/security.yml/badge.svg)](https://github.com/disencd/prompt-shell/actions/workflows/security.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
@@ -65,7 +65,7 @@ Four pluggable backends auto-detected at startup (tmux > iTerm2 > shell hook > g
 |---------|:---:|:---:|:---:|:---:|-------|
 | **tmux** | Yes | Yes | Yes | Via hook | Be inside tmux |
 | **iterm2** | Yes | Yes | Yes | Yes | `pip install .[iterm2]` |
-| **shell_hook** | No | Yes | Yes | Yes | `prompt-pulse install-hook` |
+| **shell_hook** | No | Yes | Yes | Yes | `prompt-shell install-hook` |
 | **generic** | No | Yes | History | No | None (always available) |
 
 - Polls every 2 s in idle mode; captures immediately on hotkey trigger
@@ -103,7 +103,7 @@ info (type, code, file, line, message) for 12+ pattern families:
 
 - **Clipboard** — `pbcopy` (macOS), `xclip` / `xsel` / `wl-copy` (Linux)
 - **Terminal paste** — iTerm2 `send_text()`, tmux `send-keys`
-- **File pipe** — writes to `~/.prompt-pulse/last-prompt.txt`
+- **File pipe** — writes to `~/.prompt-shell/last-prompt.txt`
 - **Notification** — `osascript` (macOS), `notify-send` (Linux)
 
 ### Global Hotkeys
@@ -118,11 +118,11 @@ info (type, code, file, line, message) for 12+ pattern families:
 ### CLI
 
 ```
-prompt-pulse start          # Start the daemon with global hotkeys
-prompt-pulse enhance "..."  # One-shot: enhance a text prompt
-prompt-pulse context        # Show current terminal context
-prompt-pulse install-hook   # Install shell hook (zsh/bash/fish)
-prompt-pulse init           # Generate default config
+prompt-shell start          # Start the daemon with global hotkeys
+prompt-shell enhance "..."  # One-shot: enhance a text prompt
+prompt-shell context        # Show current terminal context
+prompt-shell install-hook   # Install shell hook (zsh/bash/fish)
+prompt-shell init           # Generate default config
 ```
 
 ### Security
@@ -136,24 +136,24 @@ prompt-pulse init           # Generate default config
 ## Quick Start
 
 ```bash
-pip install prompt-pulse
+pip install prompt-shell
 
-# Generate default config at ~/.prompt-pulse/config.yaml
-prompt-pulse init
+# Generate default config at ~/.prompt-shell/config.yaml
+prompt-shell init
 
 # Install shell hook for terminal state capture (zsh/bash/fish)
-prompt-pulse install-hook
+prompt-shell install-hook
 
 # One-shot: enhance a prompt with current terminal context
-prompt-pulse enhance "fix the build error"
+prompt-shell enhance "fix the build error"
 
 # Or start the daemon with global hotkeys
-prompt-pulse start
+prompt-shell start
 ```
 
 ### Configuration
 
-All settings live in `~/.prompt-pulse/config.yaml`:
+All settings live in `~/.prompt-shell/config.yaml`:
 
 ```yaml
 terminal:
@@ -184,9 +184,9 @@ export PROJECT_ID=your-gcp-project-id
 export GEMINI_API_KEY=your-gemini-api-key
 
 # Build and deploy
-gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-pulse-enhancer ./cloud_run_service/
-gcloud run deploy prompt-pulse-enhancer \
-  --image gcr.io/$PROJECT_ID/prompt-pulse-enhancer \
+gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-shell-enhancer ./cloud_run_service/
+gcloud run deploy prompt-shell-enhancer \
+  --image gcr.io/$PROJECT_ID/prompt-shell-enhancer \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
@@ -195,7 +195,7 @@ gcloud run deploy prompt-pulse-enhancer \
   --min-instances 0
 
 # Copy the service URL into your config
-export CLOUD_RUN_URL=$(gcloud run services describe prompt-pulse-enhancer \
+export CLOUD_RUN_URL=$(gcloud run services describe prompt-shell-enhancer \
   --region us-central1 --format 'value(status.url)')
 ```
 
@@ -212,8 +212,8 @@ Cost at demo/dev scale: **~$0/month** (Cloud Run free tier covers millions of re
 ## Development
 
 ```bash
-git clone https://github.com/disencd/prompt-pulse.git
-cd prompt-pulse
+git clone https://github.com/disencd/prompt-shell.git
+cd prompt-shell
 uv sync --extra dev
 uv run ruff check src/ tests/
 uv run pytest tests/ -v

@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
-LABEL org.opencontainers.image.source="https://github.com/disencd/prompt-pulse"
-LABEL org.opencontainers.image.description="PromptPulse Cloud Run enhancement service"
+LABEL org.opencontainers.image.source="https://github.com/disencd/prompt-shell"
+LABEL org.opencontainers.image.description="PromptShell Cloud Run enhancement service"
 LABEL org.opencontainers.image.licenses="MIT"
 
 WORKDIR /app

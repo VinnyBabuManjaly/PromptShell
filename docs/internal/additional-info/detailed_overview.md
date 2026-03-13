@@ -212,9 +212,9 @@ Focus on:
   The gap isn't skill — it's context transfer friction. The developer's mental model is rich (they can see the screen, they know the
   stack, they know the last command that failed). The AI gets a one-line approximation of that model.
 
-  What prompt-pulse Does
+  What prompt-shell Does
 
-  prompt-pulse is a background daemon that closes that gap automatically. It monitors the developer's terminal in real-time, captures
+  prompt-shell is a background daemon that closes that gap automatically. It monitors the developer's terminal in real-time, captures
   voice input when triggered by a hotkey, and uses an LLM to merge the raw intent with the harvested terminal context — producing a
   precise, context-rich prompt delivered directly to the clipboard.
 
@@ -486,7 +486,7 @@ Focus on:
   The Complete Story of One Hotkey Press
 
   T=0ms — Boot:
-  The user ran prompt-pulse start. load_config() read ~/.prompt-pulse/config.yaml into a validated AppConfig Pydantic model.
+  The user ran prompt-shell start. load_config() read ~/.prompt-shell/config.yaml into a validated AppConfig Pydantic model.
   asyncio.run(run_hotkey_daemon(config)) started the event loop. A pynput.keyboard.Listener started on a separate OS thread, polling for
    keyboard events. The process is now idle, consuming near-zero resources.
 
@@ -497,14 +497,14 @@ Focus on:
 
   T=5ms — Terminal capture:
   create_backend("auto") probes: checks $TMUX env var (not set), checks for iterm2 package (not installed), checks for state-{pid}.json
-  files in /tmp/prompt-pulse/ (found — the shell hook has been running). ShellHookBackend is selected.
+  files in /tmp/prompt-shell/ (found — the shell hook has been running). ShellHookBackend is selected.
 
-  snapshot() reads the most recently modified state file (e.g., /tmp/prompt-pulse/state-43821.json), gets {"cwd": "/home/vinny/project",
+  snapshot() reads the most recently modified state file (e.g., /tmp/prompt-shell/state-43821.json), gets {"cwd": "/home/vinny/project",
    "last_command": "npm run build", "exit_code": 1, ...}. It supplements this with the last 5 entries from ~/.zsh_history. It reads
   .git/HEAD at /home/vinny/project/.git/HEAD and finds ref: refs/heads/feature/auth-refactor. Returns a frozen TerminalState.
 
   T=10ms — Voice listening:
-  notify_listening() fires a desktop notification ("PromptPulse is listening..."). VoiceCapture starts sounddevice.InputStream at 16kHz
+  notify_listening() fires a desktop notification ("PromptShell is listening..."). VoiceCapture starts sounddevice.InputStream at 16kHz
   mono. Audio frames arrive every 30ms via the PortAudio callback. The first 16 frames (~500ms) are used for noise calibration. The
   noise floor is measured at ~120 RMS, threshold set to max(360, 300) = 360.
 
@@ -567,10 +567,10 @@ Focus on:
   INPUTS
     Keyboard event (OS)
     Microphone audio (PortAudio → numpy int16 array)
-    Shell state file (/tmp/prompt-pulse/state-{pid}.json)
+    Shell state file (/tmp/prompt-shell/state-{pid}.json)
     Shell history (~/.zsh_history)
     Git HEAD (.git/HEAD file)
-    User config (~/.prompt-pulse/config.yaml)
+    User config (~/.prompt-shell/config.yaml)
 
   STEP 1: Audio → WAV bytes
     np.ndarray (int16, 16kHz, mono)
@@ -617,14 +617,14 @@ Focus on:
     Clipboard (pbcopy / xclip / wl-copy)
     OS notification (osascript / notify-send)
     Terminal display (rich Panel)
-    Optional: ~/.prompt-pulse/last-prompt.txt
+    Optional: ~/.prompt-shell/last-prompt.txt
 
   State That Persists Between Runs
 
   Only two things persist between pipeline executions:
 
-  1. ~/.prompt-pulse/config.yaml — loaded once at startup, held in memory as AppConfig
-  2. /tmp/prompt-pulse/state-{pid}.json — written by the shell on every command, read once per pipeline run
+  1. ~/.prompt-shell/config.yaml — loaded once at startup, held in memory as AppConfig
+  2. /tmp/prompt-shell/state-{pid}.json — written by the shell on every command, read once per pipeline run
 
   Everything else — audio, TerminalState, ContextPayload, the LLM response — is ephemeral. No database, no logs of what was enhanced, no
    cache.
@@ -698,7 +698,7 @@ Focus on:
   Decision 3: Late Imports Inside Pipeline Functions
 
   All heavy imports (litellm, sounddevice, pynput, faster_whisper) are deferred inside run_pipeline() and run_hotkey_daemon() (main.py
-  lines 41-56, 146). prompt-pulse --help completes in ~200ms because it never imports numpy or litellm. This is a deliberate startup
+  lines 41-56, 146). prompt-shell --help completes in ~200ms because it never imports numpy or litellm. This is a deliberate startup
   optimization — the import cost of the ML stack is only paid when the pipeline actually runs.
 
   Decision 4: Strategy Pattern Over Conditional Branches
@@ -719,7 +719,7 @@ Focus on:
 
   Rather than running ps -ef, lsof, or inspecting /proc to reconstruct terminal state, the shell hook approach has the shell write its
   own state to a JSON file after every command. This is opt-in but yields precise data (exact CWD, exact last command, exact exit code)
-  that no amount of process inspection can match. The tradeoff: it requires a one-time hook installation (prompt-pulse install-hook).
+  that no amount of process inspection can match. The tradeoff: it requires a one-time hook installation (prompt-shell install-hook).
 
   Decision 7: Git Branch Read from .git/HEAD Directly
 
@@ -775,7 +775,7 @@ Focus on:
 
   Three-level fallback:
   1. Explicit path from --config CLI flag
-  2. ~/.prompt-pulse/config.yaml (default user config)
+  2. ~/.prompt-shell/config.yaml (default user config)
   3. config.example.yaml from the source tree (fallback for fresh installs)
   4. AppConfig() with all defaults (if nothing else exists)
 
@@ -789,9 +789,9 @@ Focus on:
 
   State File Location
 
-  STATE_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "prompt-pulse" (monitor.py:32). On systems with XDG_RUNTIME_DIR set
+  STATE_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "prompt-shell" (monitor.py:32). On systems with XDG_RUNTIME_DIR set
   (standard on Linux with systemd), state files live in the runtime directory (tmpfs, cleaned on logout). On macOS (no XDG), they live
-  in /tmp/prompt-pulse/.
+  in /tmp/prompt-shell/.
 
   Docker
 
@@ -799,7 +799,7 @@ Focus on:
   - libportaudio2 installed in base stage — required by sounddevice
   - uv sync --frozen --no-dev --no-install-project first (dependency layer caches independently of source changes)
   - Non-root user appuser in runtime stage
-  - ENTRYPOINT ["prompt-pulse"] with CMD ["--help"] — the container image is primarily for distribution, not for running the daemon
+  - ENTRYPOINT ["prompt-shell"] with CMD ["--help"] — the container image is primarily for distribution, not for running the daemon
   (voice capture in a container without device passthrough is impractical)
 
   CI/CD
@@ -821,18 +821,18 @@ Focus on:
 
   Setup
 
-  git clone https://github.com/disencd/prompt-pulse.git
-  cd prompt-pulse
+  git clone https://github.com/disencd/prompt-shell.git
+  cd prompt-shell
 
   # Install with dev dependencies
   uv sync --extra dev
 
-  # Initialize config directory (~/.prompt-pulse/config.yaml)
-  uv run prompt-pulse init
+  # Initialize config directory (~/.prompt-shell/config.yaml)
+  uv run prompt-shell init
 
   # Install shell hook (captures CWD, last command, exit code)
-  uv run prompt-pulse install-hook
-  # Restart shell or: source ~/.prompt-pulse/hook.zsh
+  uv run prompt-shell install-hook
+  # Restart shell or: source ~/.prompt-shell/hook.zsh
 
   Configure LLM
 
@@ -847,13 +847,13 @@ Focus on:
   Run
 
   # One-shot text enhancement (quickest test)
-  uv run prompt-pulse enhance "fix the build error"
+  uv run prompt-shell enhance "fix the build error"
 
   # Full daemon with hotkeys
-  uv run prompt-pulse start
+  uv run prompt-shell start
 
   # Show what context would be captured right now
-  uv run prompt-pulse context
+  uv run prompt-shell context
 
   Test
 
@@ -935,4 +935,4 @@ Focus on:
   12. No observability:
   There are no metrics, no structured log output that could be parsed, and no way to know how often the LLM fallback is triggered vs.
   successful LLM calls. For a tool that sits in the background and silently degrades, this makes debugging user complaints ("it's not
-  working") difficult. Even a simple ~/.prompt-pulse/stats.json with success/failure counters would help.
+  working") difficult. Even a simple ~/.prompt-shell/stats.json with success/failure counters would help.

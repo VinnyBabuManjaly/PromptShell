@@ -10,7 +10,7 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, Field
 
-CONFIG_DIR = Path.home() / ".prompt-pulse"
+CONFIG_DIR = Path.home() / ".prompt-shell"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 DEFAULT_CONFIG = Path(__file__).parent.parent.parent / "config.example.yaml"
 
