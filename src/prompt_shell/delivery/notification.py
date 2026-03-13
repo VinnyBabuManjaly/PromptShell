@@ -38,25 +38,47 @@ async def show_notification(
         return True
 
 
+# AppleScript that reads all display values from argv, never from interpolated source.
+# argv: (1) title  (2) message  (3) subtitle — empty string if absent  (4) "1" = play sound
+_MACOS_NOTIFY_SCRIPT = """\
+on run argv
+    set notifTitle    to item 1 of argv
+    set notifMsg      to item 2 of argv
+    set notifSubtitle to item 3 of argv
+    set playSound     to item 4 of argv
+    if notifSubtitle is not "" then
+        if playSound is "1" then
+            display notification notifMsg with title notifTitle subtitle notifSubtitle sound name "Glass"
+        else
+            display notification notifMsg with title notifTitle subtitle notifSubtitle
+        end if
+    else
+        if playSound is "1" then
+            display notification notifMsg with title notifTitle sound name "Glass"
+        else
+            display notification notifMsg with title notifTitle
+        end if
+    end if
+end run
+"""
+
+
 def _notify_macos(title: str, message: str, subtitle: str | None, sound: bool) -> bool:
-    """macOS notification via osascript."""
+    """macOS notification via osascript.
+
+    Values are passed as argv arguments — never interpolated into the script
+    source — so no AppleScript injection is possible regardless of content.
+    """
     try:
-        title_esc = title.replace('"', '\\"')
-        message_esc = message.replace('"', '\\"')
-
-        script = f'display notification "{message_esc}" with title "{title_esc}"'
-        if subtitle:
-            subtitle_esc = subtitle.replace('"', '\\"')
-            script = (
-                f'display notification "{message_esc}" '
-                f'with title "{title_esc}" '
-                f'subtitle "{subtitle_esc}"'
-            )
-        if sound:
-            script += ' sound name "Glass"'
-
         subprocess.run(
-            ["osascript", "-e", script],
+            [
+                "osascript",
+                "-e", _MACOS_NOTIFY_SCRIPT,
+                title,
+                message,
+                subtitle or "",
+                "1" if sound else "0",
+            ],
             capture_output=True,
             timeout=5,
         )
