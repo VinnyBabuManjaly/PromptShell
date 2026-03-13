@@ -6,7 +6,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 
-from prompt_pulse.config import LLMConfig
+from prompt_shell.config import LLMConfig
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,8 @@ class LLMClient:
             return model  # litellm defaults to OpenAI
         elif provider == "anthropic":
             return f"anthropic/{model}"
+        elif provider == "gemini":
+            return f"gemini/{model}"
         return model
 
     async def complete(self, prompt: str) -> str:
@@ -166,7 +168,7 @@ class LLMClient:
                     )
                     return resp.status_code == 200
             # For cloud providers, assume available if API key is set
-            return bool(self._config.resolve_api_key()) or self._config.provider == "ollama"
+            return bool(self._config.resolve_api_key())
         except Exception:
             return False
 

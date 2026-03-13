@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
 from pathlib import Path
 
@@ -11,10 +12,10 @@ from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
 
-from prompt_pulse.config import AppConfig, init_config_dir, load_config
+from prompt_shell.config import AppConfig, init_config_dir, load_config
 
 app = typer.Typer(
-    name="prompt-pulse",
+    name="prompt-shell",
     help="Voice-activated terminal-aware prompt enhancer for AI coding assistants.",
     no_args_is_help=True,
 )
@@ -29,6 +30,7 @@ async def run_pipeline(
     config: AppConfig,
     voice: bool = True,
     clipboard_input: bool = False,
+    transcript: str | None = None,
 ) -> str | None:
     """Execute the full enhancement pipeline.
 
@@ -38,22 +40,19 @@ async def run_pipeline(
     4. Enhance prompt via LLM
     5. Deliver result
     """
-    from prompt_pulse.delivery.clipboard import deliver_to_clipboard, read_from_clipboard
-    from prompt_pulse.delivery.notification import (
+    from prompt_shell.delivery.clipboard import deliver_to_clipboard, read_from_clipboard
+    from prompt_shell.delivery.notification import (
         notify_enhanced_prompt,
         notify_error,
         notify_fallback,
         notify_listening,
     )
-    from prompt_pulse.enhancer.llm_client import enhance_prompt
-    from prompt_pulse.enhancer.prompt_builder import (
-        build_fallback_prompt,
-        build_meta_prompt,
-    )
-    from prompt_pulse.terminal.context import ContextBuilder
-    from prompt_pulse.terminal.monitor import TerminalState, create_backend
-    from prompt_pulse.voice.capture import VoiceCapture
-    from prompt_pulse.voice.transcribe import create_engine
+    from prompt_shell.enhancer.enhancement_client import enhance_with_fallback
+    from prompt_shell.enhancer.prompt_builder import build_fallback_prompt
+    from prompt_shell.terminal.context import ContextBuilder
+    from prompt_shell.terminal.monitor import TerminalState, create_backend
+    from prompt_shell.voice.capture import VoiceCapture
+    from prompt_shell.voice.transcribe import create_engine
 
     logger = logging.getLogger(__name__)
 
@@ -70,8 +69,12 @@ async def run_pipeline(
         logger.warning("Terminal context capture failed: %s (continuing without it)", e)
 
     # --- Step 2: Voice / clipboard input ---
-    transcript = ""
-    if voice:
+    # When transcript is pre-supplied (e.g., direct text from CLI), skip capture.
+    if transcript is None:
+        transcript = ""
+    if transcript:
+        pass  # already have input
+    elif voice:
         await notify_listening()
         capture = VoiceCapture(
             silence_threshold_sec=config.voice.silence_threshold_sec,
@@ -109,11 +112,10 @@ async def run_pipeline(
 
     # --- Step 4: Enhance via LLM ---
     console.print("[dim]Enhancing prompt...[/]")
-    meta_prompt = build_meta_prompt(context, summary)
     fallback = build_fallback_prompt(summary)
 
     try:
-        result = await enhance_prompt(meta_prompt, config.llm, fallback_text=fallback)
+        result = await enhance_with_fallback(summary, config.llm, fallback_text=fallback)
         enhanced = result.text
         if result.used_fallback:
             console.print(f"[yellow]LLM unavailable ({result.error}), using template fallback.[/]")
@@ -146,7 +148,7 @@ async def run_hotkey_daemon(config: AppConfig) -> None:
     from pynput import keyboard
 
     logger = logging.getLogger(__name__)
-    console.print("[bold green]PromptPulse started[/]")
+    console.print("[bold green]PromptShell started[/]")
     console.print(f"  Backend:      {config.terminal.backend}")
     console.print(f"  Activate:     {config.hotkeys.activate}")
     console.print(f"  Context only: {config.hotkeys.context_only}")
@@ -155,8 +157,10 @@ async def run_hotkey_daemon(config: AppConfig) -> None:
     console.print()
     console.print("[dim]Press Ctrl+C to stop.[/]")
 
-    loop = asyncio.get_event_loop()
-    pipeline_task: asyncio.Task | None = None
+    loop = asyncio.get_running_loop()
+    pipeline_future: concurrent.futures.Future | None = None
+    # Mutable reference so the hotkey thread can cancel the running asyncio task.
+    _active_task: list[asyncio.Task | None] = [None]
 
     def _parse_hotkey(hotkey_str: str):
         """Parse a hotkey string like 'ctrl+shift+p' into pynput format."""
@@ -182,32 +186,52 @@ async def run_hotkey_daemon(config: AppConfig) -> None:
 
     activate_combo = _parse_hotkey(config.hotkeys.activate)
     context_combo = _parse_hotkey(config.hotkeys.context_only)
+    re_enhance_combo = _parse_hotkey(config.hotkeys.re_enhance)
     cancel_combo = _parse_hotkey(config.hotkeys.cancel)
 
     current_keys: set = set()
 
+    async def _run_tracked(coro):
+        """Run a pipeline coroutine and register the task for cancellation."""
+        task = asyncio.current_task()
+        _active_task[0] = task
+        try:
+            return await coro
+        finally:
+            _active_task[0] = None
+
     def on_press(key):
-        nonlocal pipeline_task
+        nonlocal pipeline_future
         current_keys.add(key)
 
         pressed = frozenset(current_keys)
 
         if activate_combo.issubset(pressed):
             logger.info("Hotkey: activate")
-            if pipeline_task is None or pipeline_task.done():
-                pipeline_task = asyncio.run_coroutine_threadsafe(
-                    run_pipeline(config, voice=True), loop
+            if pipeline_future is None or pipeline_future.done():
+                pipeline_future = asyncio.run_coroutine_threadsafe(
+                    _run_tracked(run_pipeline(config, voice=True)), loop
                 )
 
         elif context_combo.issubset(pressed):
             logger.info("Hotkey: context_only")
-            if pipeline_task is None or pipeline_task.done():
-                pipeline_task = asyncio.run_coroutine_threadsafe(
-                    run_pipeline(config, voice=False, clipboard_input=True), loop
+            if pipeline_future is None or pipeline_future.done():
+                pipeline_future = asyncio.run_coroutine_threadsafe(
+                    _run_tracked(run_pipeline(config, voice=False, clipboard_input=True)), loop
+                )
+
+        elif re_enhance_combo.issubset(pressed):
+            logger.info("Hotkey: re_enhance")
+            if pipeline_future is None or pipeline_future.done():
+                pipeline_future = asyncio.run_coroutine_threadsafe(
+                    _run_tracked(run_pipeline(config, voice=False, clipboard_input=True)), loop
                 )
 
         elif cancel_combo.issubset(pressed):
             logger.info("Hotkey: cancel")
+            task = _active_task[0]
+            if task and not task.done():
+                loop.call_soon_threadsafe(task.cancel)
 
     def on_release(key):
         current_keys.discard(key)
@@ -256,48 +280,7 @@ def enhance(
     config = load_config(config_file)
 
     if text:
-        # Direct text enhancement
-        async def _run():
-            from prompt_pulse.delivery.clipboard import deliver_to_clipboard
-            from prompt_pulse.enhancer.llm_client import enhance_prompt as do_enhance
-            from prompt_pulse.enhancer.prompt_builder import (
-                build_fallback_prompt,
-                build_meta_prompt,
-            )
-            from prompt_pulse.terminal.context import ContextBuilder
-            from prompt_pulse.terminal.monitor import TerminalState, create_backend
-
-            # Try to get terminal context even in text mode
-            terminal_state = TerminalState()
-            try:
-                backend = create_backend(
-                    backend_type=config.terminal.backend,
-                    screen_buffer_lines=config.terminal.screen_buffer_lines,
-                )
-                terminal_state = await backend.snapshot()
-            except Exception:
-                pass
-
-            builder = ContextBuilder()
-            ctx = builder.build(terminal_state, voice_transcript=text)
-            summary = builder.build_summary(ctx)
-            meta = build_meta_prompt(ctx, summary)
-            fallback = build_fallback_prompt(summary)
-
-            try:
-                res = await do_enhance(meta, config.llm, fallback_text=fallback)
-                enhanced = res.text
-                if res.used_fallback:
-                    console.print(
-                        f"[yellow]LLM unavailable ({res.error}), using template fallback.[/]"
-                    )
-            except Exception:
-                enhanced = fallback
-
-            console.print(Panel(enhanced, title="Enhanced Prompt", border_style="green"))
-            await deliver_to_clipboard(enhanced)
-
-        asyncio.run(_run())
+        asyncio.run(run_pipeline(config, voice=False, transcript=text))
     elif voice:
         asyncio.run(run_pipeline(config, voice=True))
     elif clipboard:
@@ -317,8 +300,8 @@ def context(
     _setup_logging(verbose)
 
     async def _run():
-        from prompt_pulse.terminal.context import ContextBuilder
-        from prompt_pulse.terminal.monitor import create_backend
+        from prompt_shell.terminal.context import ContextBuilder
+        from prompt_shell.terminal.monitor import create_backend
 
         try:
             be = create_backend(backend_type=backend, screen_buffer_lines=lines)
@@ -374,7 +357,7 @@ def install_hook(
     This adds a lightweight precmd/preexec hook to your shell that writes
     CWD, last command, and exit code to a state file. Works with any terminal.
     """
-    from prompt_pulse.terminal.monitor import ShellHookBackend
+    from prompt_shell.terminal.monitor import ShellHookBackend
 
     hook_file = ShellHookBackend.install_hook(shell)
     console.print(f"[green]Shell hook installed:[/] {hook_file}")
@@ -384,13 +367,13 @@ def install_hook(
 
 @app.command()
 def init():
-    """Initialize configuration directory (~/.prompt-pulse/)."""
+    """Initialize configuration directory (~/.prompt-shell/)."""
     config_dir = init_config_dir()
     console.print(f"[green]Config directory initialized:[/] {config_dir}")
     console.print(f"[dim]Edit config at:[/] {config_dir / 'config.yaml'}")
     console.print()
     console.print("[dim]Recommended next step — install the shell hook:[/]")
-    console.print("  prompt-pulse install-hook")
+    console.print("  prompt-shell install-hook")
 
 
 # ---------------------------------------------------------------------------

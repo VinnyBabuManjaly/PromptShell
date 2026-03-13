@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
+import os
 import tempfile
 import wave
 from enum import Enum
@@ -76,7 +77,7 @@ class VoiceCapture:
 
     async def _record_with_vad(self) -> np.ndarray | None:
         """Record with energy-based voice activity detection."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         frames: list[np.ndarray] = []
         speech_started = False
@@ -181,7 +182,8 @@ class VoiceCapture:
     def save_debug_wav(self, wav_bytes: bytes, path: str | None = None) -> Path:
         """Save WAV bytes to a file for debugging."""
         if path is None:
-            fd, path = tempfile.mkstemp(suffix=".wav", prefix="prompt_pulse_")
+            fd, path = tempfile.mkstemp(suffix=".wav", prefix="prompt_shell_")
+            os.close(fd)
         p = Path(path)
         p.write_bytes(wav_bytes)
         logger.debug("Saved debug audio to %s", p)

@@ -1,7 +1,7 @@
 """Tests for the context builder."""
 
-from prompt_pulse.terminal.context import ContextBuilder
-from prompt_pulse.terminal.monitor import CommandRecord, TerminalState
+from prompt_shell.terminal.context import ContextBuilder
+from prompt_shell.terminal.monitor import CommandRecord, TerminalState
 
 
 def test_build_context_with_errors():

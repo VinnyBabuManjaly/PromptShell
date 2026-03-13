@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from prompt_pulse.config import AppConfig, load_config
+from prompt_shell.config import AppConfig, load_config
 
 
 def test_default_config():
@@ -77,6 +77,42 @@ def test_resolve_api_key_literal():
 
 
 def test_load_nonexistent_config():
-    config = load_config(Path("/tmp/does_not_exist_prompt_pulse.yaml"))
+    config = load_config(Path("/tmp/does_not_exist_prompt_shell.yaml"))
     # Should fall back to defaults
     assert config.terminal.backend == "auto"
+
+
+def test_gemini_provider_accepted():
+    from prompt_shell.config import LLMConfig
+
+    config = LLMConfig(
+        provider="gemini",
+        model="gemini-2.0-flash",
+        cloud_run_url="https://prompt-pulse-abc123-uc.a.run.app",
+    )
+    assert config.provider == "gemini"
+    assert config.cloud_run_url == "https://prompt-pulse-abc123-uc.a.run.app"
+
+
+def test_cloud_run_url_env_var_resolution(monkeypatch):
+    from prompt_shell.config import LLMConfig
+
+    monkeypatch.setenv("CLOUD_RUN_URL", "https://my-service-xyz.a.run.app")
+    config = LLMConfig(
+        provider="gemini", model="gemini-2.0-flash", cloud_run_url="${CLOUD_RUN_URL}"
+    )
+    assert config.resolve_cloud_run_url() == "https://my-service-xyz.a.run.app"
+
+
+def test_cloud_run_url_literal():
+    from prompt_shell.config import LLMConfig
+
+    config = LLMConfig(provider="gemini", cloud_run_url="https://literal-url.a.run.app")
+    assert config.resolve_cloud_run_url() == "https://literal-url.a.run.app"
+
+
+def test_cloud_run_url_none():
+    from prompt_shell.config import LLMConfig
+
+    config = LLMConfig(provider="gemini", cloud_run_url=None)
+    assert config.resolve_cloud_run_url() is None

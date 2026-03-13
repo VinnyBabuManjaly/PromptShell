@@ -1,10 +1,9 @@
 """Tests for the prompt builder templates."""
 
-from prompt_pulse.enhancer.prompt_builder import (
+from prompt_shell.enhancer.prompt_builder import (
     build_fallback_prompt,
     build_meta_prompt,
 )
-from prompt_pulse.terminal.context import ContextPayload
 
 
 def _make_summary(**overrides):
@@ -27,7 +26,7 @@ def _make_summary(**overrides):
 
 def test_meta_prompt_contains_voice_transcript():
     summary = _make_summary()
-    prompt = build_meta_prompt(ContextPayload(), summary)
+    prompt = build_meta_prompt(summary)
     assert "fix the error" in prompt
     assert "TS2345" in prompt
     assert "/home/user/project" in prompt
@@ -39,7 +38,7 @@ def test_meta_prompt_contains_context():
         git_branch="feature/auth",
         project_type="python",
     )
-    prompt = build_meta_prompt(ContextPayload(), summary)
+    prompt = build_meta_prompt(summary)
     assert "/app/backend" in prompt
     assert "feature/auth" in prompt
     assert "python" in prompt

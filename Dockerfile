@@ -1,7 +1,10 @@
+# Local client image — runs the prompt-shell daemon on macOS/Linux.
+# The enhancement service has its own Dockerfile in cloud_run_service/Dockerfile.
+
 FROM python:3.14-slim AS base
 
-LABEL org.opencontainers.image.source="https://github.com/disencd/prompt-pulse"
-LABEL org.opencontainers.image.description="Voice-activated terminal-aware prompt enhancer"
+LABEL org.opencontainers.image.source="https://github.com/VinnyBabuManjaly/PromptShell"
+LABEL org.opencontainers.image.description="Voice-activated terminal-aware prompt enhancer (local client)"
 LABEL org.opencontainers.image.licenses="MIT"
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -45,5 +48,5 @@ ENV PATH="/app/.venv/bin:$PATH"
 RUN useradd --create-home --shell /bin/bash appuser
 USER appuser
 
-ENTRYPOINT ["prompt-pulse"]
+ENTRYPOINT ["prompt-shell"]
 CMD ["--help"]

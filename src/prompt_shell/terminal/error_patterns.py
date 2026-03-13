@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from typing import ClassVar
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -27,7 +30,6 @@ class ErrorPattern:
     name: str
     regex: re.Pattern
     error_type: str
-    extract_map: dict[str, str]  # group_name -> field_name
 
     def match(self, text: str) -> list[DetectedError]:
         errors = []
@@ -138,20 +140,14 @@ class ErrorDetectionEngine:
         try:
             compiled = re.compile(spec["regex"], re.MULTILINE)
         except re.error:
-            logger_msg = f"Invalid regex in error pattern '{spec.get('name', '?')}'"
-            import logging
-
-            logging.getLogger(__name__).warning(logger_msg)
+            logger.warning("Invalid regex in error pattern '%s'", spec.get("name", "?"))
             return
 
-        # Build extract map from named groups
-        extract_map = {g: g for g in compiled.groupindex}
         self._patterns.append(
             ErrorPattern(
                 name=spec["name"],
                 regex=compiled,
                 error_type=spec.get("error_type", spec["name"]),
-                extract_map=extract_map,
             )
         )
 

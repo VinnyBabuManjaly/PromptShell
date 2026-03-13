@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 BackendType = Literal["auto", "shell_hook", "tmux", "iterm2", "generic"]
 
 # Shared state file location for the shell hook
-STATE_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "prompt-pulse"
+STATE_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "prompt-shell"
 STATE_FILE_PATTERN = "state-{pid}.json"
 
 # ---------------------------------------------------------------------------
@@ -175,67 +175,67 @@ def _read_shell_history(shell: str = "", max_commands: int = 10) -> list[Command
 # ---------------------------------------------------------------------------
 
 SHELL_HOOK_ZSH = r"""
-# prompt-pulse shell hook (zsh)
-__prompt_pulse_state_dir="${XDG_RUNTIME_DIR:-/tmp}/prompt-pulse"
-mkdir -p "$__prompt_pulse_state_dir"
-__prompt_pulse_state_file="$__prompt_pulse_state_dir/state-$$.json"
+# prompt-shell shell hook (zsh)
+__prompt_shell_state_dir="${XDG_RUNTIME_DIR:-/tmp}/prompt-shell"
+mkdir -p "$__prompt_shell_state_dir"
+__prompt_shell_state_file="$__prompt_shell_state_dir/state-$$.json"
 
-__prompt_pulse_preexec() {
-    __prompt_pulse_cmd="$1"
-    __prompt_pulse_cmd_start=$(date +%s)
+__prompt_shell_preexec() {
+    __prompt_shell_cmd="$1"
+    __prompt_shell_cmd_start=$(date +%s)
 }
 
-__prompt_pulse_precmd() {
+__prompt_shell_precmd() {
     local exit_code=$?
     printf '{"pid":%d,"cwd":"%s","shell":"%s","last_command":"%s","exit_code":%d,"timestamp":%d,"hostname":"%s","username":"%s"}\n' \
         "$$" "$PWD" "$SHELL" \
-        "$(echo "$__prompt_pulse_cmd" | sed 's/"/\\"/g')" \
+        "$(echo "$__prompt_shell_cmd" | sed 's/"/\\"/g')" \
         "$exit_code" "$(date +%s)" "$(hostname -s)" "$USER" \
-        > "$__prompt_pulse_state_file"
-    unset __prompt_pulse_cmd
+        > "$__prompt_shell_state_file"
+    unset __prompt_shell_cmd
 }
 
 autoload -Uz add-zsh-hook
-add-zsh-hook preexec __prompt_pulse_preexec
-add-zsh-hook precmd __prompt_pulse_precmd
+add-zsh-hook preexec __prompt_shell_preexec
+add-zsh-hook precmd __prompt_shell_precmd
 """
 
 SHELL_HOOK_BASH = r"""
-# prompt-pulse shell hook (bash)
-__prompt_pulse_state_dir="${XDG_RUNTIME_DIR:-/tmp}/prompt-pulse"
-mkdir -p "$__prompt_pulse_state_dir"
-__prompt_pulse_state_file="$__prompt_pulse_state_dir/state-$$.json"
+# prompt-shell shell hook (bash)
+__prompt_shell_state_dir="${XDG_RUNTIME_DIR:-/tmp}/prompt-shell"
+mkdir -p "$__prompt_shell_state_dir"
+__prompt_shell_state_file="$__prompt_shell_state_dir/state-$$.json"
 
-__prompt_pulse_trap_debug() {
-    __prompt_pulse_cmd="$BASH_COMMAND"
+__prompt_shell_trap_debug() {
+    __prompt_shell_cmd="$BASH_COMMAND"
 }
-trap '__prompt_pulse_trap_debug' DEBUG
+trap '__prompt_shell_trap_debug' DEBUG
 
-__prompt_pulse_prompt_command() {
+__prompt_shell_prompt_command() {
     local exit_code=$?
     printf '{"pid":%d,"cwd":"%s","shell":"%s","last_command":"%s","exit_code":%d,"timestamp":%d,"hostname":"%s","username":"%s"}\n' \
         "$$" "$PWD" "$SHELL" \
-        "$(echo "$__prompt_pulse_cmd" | sed 's/"/\\"/g')" \
+        "$(echo "$__prompt_shell_cmd" | sed 's/"/\\"/g')" \
         "$exit_code" "$(date +%s)" "$(hostname -s)" "$USER" \
-        > "$__prompt_pulse_state_file"
+        > "$__prompt_shell_state_file"
 }
 
-PROMPT_COMMAND="__prompt_pulse_prompt_command${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+PROMPT_COMMAND="__prompt_shell_prompt_command${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
 """
 
 SHELL_HOOK_FISH = r"""
-# prompt-pulse shell hook (fish)
-set -g __prompt_pulse_state_dir (test -n "$XDG_RUNTIME_DIR"; and echo "$XDG_RUNTIME_DIR"; or echo "/tmp")"/prompt-pulse"
-mkdir -p $__prompt_pulse_state_dir
-set -g __prompt_pulse_state_file "$__prompt_pulse_state_dir/state-%self.json"
+# prompt-shell shell hook (fish)
+set -g __prompt_shell_state_dir (test -n "$XDG_RUNTIME_DIR"; and echo "$XDG_RUNTIME_DIR"; or echo "/tmp")"/prompt-shell"
+mkdir -p $__prompt_shell_state_dir
+set -g __prompt_shell_state_file "$__prompt_shell_state_dir/state-%self.json"
 
-function __prompt_pulse_postexec --on-event fish_postexec
+function __prompt_shell_postexec --on-event fish_postexec
     set -l exit_code $status
     printf '{"pid":%d,"cwd":"%s","shell":"fish","last_command":"%s","exit_code":%d,"timestamp":%d,"hostname":"%s","username":"%s"}\n' \
         %self "$PWD" \
         (string replace -a '"' '\\"' -- "$argv") \
         $exit_code (date +%s) (hostname -s) "$USER" \
-        > $__prompt_pulse_state_file
+        > $__prompt_shell_state_file
 end
 """
 
@@ -340,10 +340,10 @@ class ShellHookBackend(TerminalBackend):
         if "fish" in shell_name:
             hook_dir = Path.home() / ".config" / "fish" / "conf.d"
             hook_dir.mkdir(parents=True, exist_ok=True)
-            hook_file = hook_dir / "prompt_pulse.fish"
+            hook_file = hook_dir / "prompt_shell.fish"
             hook_file.write_text(SHELL_HOOK_FISH)
         elif "bash" in shell_name:
-            hook_file = Path.home() / ".prompt-pulse" / "hook.bash"
+            hook_file = Path.home() / ".prompt-shell" / "hook.bash"
             hook_file.parent.mkdir(parents=True, exist_ok=True)
             hook_file.write_text(SHELL_HOOK_BASH)
             # Add source line to .bashrc if not present
@@ -354,7 +354,7 @@ class ShellHookBackend(TerminalBackend):
                     f.write(f"\n{source_line}\n")
         else:
             # zsh
-            hook_file = Path.home() / ".prompt-pulse" / "hook.zsh"
+            hook_file = Path.home() / ".prompt-shell" / "hook.zsh"
             hook_file.parent.mkdir(parents=True, exist_ok=True)
             hook_file.write_text(SHELL_HOOK_ZSH)
             # Add source line to .zshrc if not present
@@ -382,7 +382,7 @@ class TmuxBackend(TerminalBackend):
         return bool(os.environ.get("TMUX")) and shutil.which("tmux") is not None
 
     async def snapshot(self) -> TerminalState:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         # Run tmux commands in parallel
         capture_task = loop.run_in_executor(None, self._tmux_capture_pane)
@@ -435,28 +435,22 @@ class TmuxBackend(TerminalBackend):
             return ""
 
     def _tmux_session_info(self) -> dict:
-        """Get session metadata via tmux display-message."""
-        info = {}
-        format_vars = {
-            "session_name": "#{session_name}",
-            "pane_id": "#{pane_id}",
-            "pane_current_path": "#{pane_current_path}",
-            "pane_current_command": "#{pane_current_command}",
-            "pane_pid": "#{pane_pid}",
-        }
-        for key, fmt in format_vars.items():
-            try:
-                result = subprocess.run(
-                    ["tmux", "display-message", "-p", fmt],
-                    capture_output=True,
-                    text=True,
-                    timeout=5,
-                )
-                if result.returncode == 0:
-                    info[key] = result.stdout.strip()
-            except Exception:
-                pass
-        return info
+        """Get session metadata via a single tmux display-message call."""
+        keys = ["session_name", "pane_id", "pane_current_path", "pane_current_command", "pane_pid"]
+        fmt = "|".join(f"#{{{k}}}" for k in keys)
+        try:
+            result = subprocess.run(
+                ["tmux", "display-message", "-p", fmt],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                parts = result.stdout.strip().split("|")
+                return dict(zip(keys, parts))
+        except Exception:
+            pass
+        return {}
 
 
 # ---------------------------------------------------------------------------
@@ -569,7 +563,8 @@ class ITerm2Backend(TerminalBackend):
             )
 
         try:
-            iterm2.run_until_complete(_capture)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, iterm2.run_until_complete, _capture)
         except Exception as e:
             logger.warning("iTerm2 connection failed: %s", e)
 
@@ -590,7 +585,7 @@ class GenericBackend(TerminalBackend):
         return True  # Always available as fallback
 
     async def snapshot(self) -> TerminalState:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         shell = os.environ.get("SHELL", "")
         cwd = os.getcwd()

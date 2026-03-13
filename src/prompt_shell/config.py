@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from pathlib import Path
 from typing import Literal
 
@@ -29,9 +30,10 @@ class VoiceConfig(BaseModel):
 
 
 class LLMConfig(BaseModel):
-    provider: Literal["ollama", "openai", "anthropic"] = "ollama"
+    provider: Literal["ollama", "openai", "anthropic", "gemini"] = "ollama"
     model: str = "llama3.2:8b"
     api_key: str | None = None
+    cloud_run_url: str | None = None  # Cloud Run service endpoint (Gemini provider)
     temperature: float = Field(default=0.3, ge=0.0, le=2.0)
     max_tokens: int = Field(default=500, ge=100, le=4000)
 
@@ -41,6 +43,14 @@ class LLMConfig(BaseModel):
             env_var = self.api_key[2:-1]
             return os.environ.get(env_var)
         return self.api_key
+
+    def resolve_cloud_run_url(self) -> str | None:
+        """Resolve env var references like ${CLOUD_RUN_URL}."""
+        url = self.cloud_run_url
+        if url and url.startswith("${") and url.endswith("}"):
+            env_var = url[2:-1]
+            return os.environ.get(env_var)
+        return url
 
 
 class DeliveryConfig(BaseModel):
@@ -65,17 +75,11 @@ class AppConfig(BaseModel):
 
 
 def load_config(config_path: Path | None = None) -> AppConfig:
-    """Load configuration from YAML file, falling back to defaults."""
+    """Load configuration from YAML file, falling back to built-in defaults."""
     path = config_path or CONFIG_FILE
 
     if path.exists():
         with open(path) as f:
-            raw = yaml.safe_load(f) or {}
-        return AppConfig(**raw)
-
-    # Fall back to example config if it exists
-    if DEFAULT_CONFIG.exists():
-        with open(DEFAULT_CONFIG) as f:
             raw = yaml.safe_load(f) or {}
         return AppConfig(**raw)
 
@@ -86,7 +90,5 @@ def init_config_dir() -> Path:
     """Create the config directory and copy example config if needed."""
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     if not CONFIG_FILE.exists() and DEFAULT_CONFIG.exists():
-        import shutil
-
         shutil.copy(DEFAULT_CONFIG, CONFIG_FILE)
     return CONFIG_DIR

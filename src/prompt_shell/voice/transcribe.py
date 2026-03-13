@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import tempfile
 from abc import ABC, abstractmethod
@@ -69,7 +70,10 @@ class WhisperLocalEngine(TranscriptionEngine):
 
     async def transcribe(self, wav_bytes: bytes) -> TranscriptionResult:
         """Transcribe using local faster-whisper model."""
-        self._load_model()
+        loop = asyncio.get_running_loop()
+
+        # Model loading is blocking (may download ~150MB on first run) — run in executor.
+        await loop.run_in_executor(None, self._load_model)
 
         # Write to temp file (faster-whisper needs a file path)
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
@@ -77,22 +81,16 @@ class WhisperLocalEngine(TranscriptionEngine):
             tmp_path = f.name
 
         try:
-            segments, info = self._model.transcribe(
-                tmp_path,
-                beam_size=5,
-                language="en",
-                vad_filter=True,
-            )
+            # Inference is CPU-bound and synchronous — run in executor to avoid blocking the loop.
+            def _infer() -> tuple:
+                return self._model.transcribe(tmp_path, beam_size=5, language="en", vad_filter=True)
+
+            segments, info = await loop.run_in_executor(None, _infer)
             text = " ".join(seg.text for seg in segments).strip()
-            conf = (
-                1.0 - info.language_probability
-                if info.language != "en"
-                else info.language_probability
-            )
             return TranscriptionResult(
                 text=text,
                 language=info.language,
-                confidence=conf,
+                confidence=info.language_probability,
             )
         finally:
             Path(tmp_path).unlink(missing_ok=True)
@@ -173,9 +171,7 @@ class AppleSpeechEngine(TranscriptionEngine):
             recognizer = Speech.SFSpeechRecognizer.alloc().init()
             request = Speech.SFSpeechURLRecognitionRequest.alloc().initWithURL_(url)
 
-            import asyncio
-
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             result_future = loop.create_future()
 
             def handler(result, error):

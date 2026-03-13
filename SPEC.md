@@ -1,8 +1,9 @@
-# PromptPulse — Technical Specification
+# PromptShell — Technical Specification
 
-> **Project**: prompt-pulse
+> **Project**: prompt-shell
 > **Version**: 0.1.0 (MVP)
-> **Date**: 2026-03-11
+> **Date**: 2026-03-12
+> **Challenge**: Gemini Live Agent Challenge — Live Agents category
 
 ---
 
@@ -21,8 +22,9 @@ When users interact with AI coding assistants (Devin, Copilot, ChatGPT, etc.) fr
 | G1 | Capture terminal context from the active terminal in real-time | Screen buffer, CWD, last N commands, exit codes accessible via API (multi-backend: tmux, iTerm2, shell_hook, generic) |
 | G2 | Accept voice input and transcribe to text | < 2s latency from speech-end to transcription |
 | G3 | Build context-aware enhanced prompts | Enhanced prompt includes: terminal output, CWD, recent commands, error context |
-| G4 | Deliver enhanced prompt to target AI tool | Copy to clipboard / pipe to stdin / API call |
-| G5 | Minimal friction UX | Single hotkey to activate; no manual context copying |
+| G4 | Enhance prompts via Gemini 2.0 Flash on Google Cloud Run | Uses Google GenAI SDK; backend hosted on GCP; satisfies Gemini Live Agent Challenge requirements |
+| G5 | Deliver enhanced prompt to target AI tool | Copy to clipboard / pipe to stdin / API call |
+| G6 | Minimal friction UX | Single hotkey to activate; no manual context copying |
 
 ---
 
@@ -77,20 +79,20 @@ When users interact with AI coding assistants (Devin, Copilot, ChatGPT, etc.) fr
 | # | Backend | Platform | How It Works | Capabilities |
 |---|---------|----------|-------------|--------------|
 | 1 | **tmux** | macOS, Linux | `tmux capture-pane` for screen buffer; `tmux display-message` for CWD, PID, process info | Screen buffer, CWD, running process, command history |
-| 2 | **iterm2** | macOS only | iTerm2 Python API (`iterm2` pip package). Optional dependency: `pip install prompt-pulse[iterm2]` | Screen buffer, CWD, last command, exit code, job name |
-| 3 | **shell_hook** | macOS, Linux | Lightweight precmd/preexec hook installed in the user's shell (zsh/bash/fish). Writes CWD, last command, and exit code to a state file (`~/.prompt-pulse/shell_state.json`) | CWD, last command, exit code (no screen buffer) |
+| 2 | **iterm2** | macOS only | iTerm2 Python API (`iterm2` pip package). Optional dependency: `pip install prompt-shell[iterm2]` | Screen buffer, CWD, last command, exit code, job name |
+| 3 | **shell_hook** | macOS, Linux | Lightweight precmd/preexec hook installed in the user's shell (zsh/bash/fish). Writes CWD, last command, and exit code to a state file (`~/.prompt-shell/shell_state.json`) | CWD, last command, exit code (no screen buffer) |
 | 4 | **generic** | macOS, Linux | Reads shell history files (`~/.zsh_history`, `~/.bash_history`, `~/.local/share/fish/fish_history`). Detects CWD via `/proc/PID/cwd` (Linux) or `lsof -p PID` (macOS) | CWD, command history (no screen buffer) |
 
 **Shell Hook Details** (backend `shell_hook`):
 - **zsh**: `precmd` / `preexec` functions appended to `~/.zshrc`
 - **bash**: `PROMPT_COMMAND` / `DEBUG` trap appended to `~/.bashrc`
 - **fish**: `fish_postexec` function added to `~/.config/fish/conf.d/`
-- Installed via `prompt-pulse install-hook`
+- Installed via `prompt-shell install-hook`
 
 **Requirements by Backend**:
 - **tmux**: User must be inside a tmux session.
-- **iterm2**: iTerm2 with Shell Integration installed and Python API enabled. Optional dependency (`pip install prompt-pulse[iterm2]`).
-- **shell_hook**: Hook installed via `prompt-pulse install-hook`.
+- **iterm2**: iTerm2 with Shell Integration installed and Python API enabled. Optional dependency (`pip install prompt-shell[iterm2]`).
+- **shell_hook**: Hook installed via `prompt-shell install-hook`.
 - **generic**: No special setup. Always available as fallback.
 
 **Polling Strategy**:
@@ -174,11 +176,13 @@ Each pattern extracts: `error_type`, `code`, `file`, `line`, `message`.
 
 ---
 
-### 5.4 PromptPulse (`prompt-pulse`)
+### 5.4 Enhancement Service (`cloud_run_service/`)
 
-**Purpose**: Take the raw voice transcript + context and produce an optimized prompt.
+**Purpose**: Take the serialized `ContextPayload` (sent from the local client) and produce an optimized prompt using Gemini 2.0 Flash.
 
-**Strategy**: Use an LLM (GPT-4o / Claude / local Ollama) with a meta-prompt.
+**Deployment**: Google Cloud Run (stateless, scales to zero, free tier covers demo scale).
+
+**Transport**: The local client sends a JSON-encoded `ContextPayload` via `HTTP POST /enhance` and receives `{ "enhanced_prompt": "..." }` in response.
 
 **Meta-Prompt Template**:
 ```
@@ -206,14 +210,19 @@ TERMINAL CONTEXT:
 OUTPUT: Write the enhanced prompt only. No explanation.
 ```
 
-**LLM Options**:
-| Provider | Model | Cost | Privacy |
-|----------|-------|------|---------|
-| Local (Ollama) | `llama3.2:8b` | Free | Full privacy |
-| OpenAI | `gpt-4o-mini` | ~$0.001/prompt | Cloud |
-| Anthropic | `claude-3.5-haiku` | ~$0.001/prompt | Cloud |
+**LLM**:
+| Provider | Model | SDK | Cost | Hosting |
+|----------|-------|-----|------|---------|
+| **Gemini** (default) | `gemini-2.0-flash` | `google-genai` | Free tier: 1,500 req/day | **Google Cloud Run** |
+| Ollama (local fallback) | `llama3.2:8b` | `litellm` | Free | Local only |
+| OpenAI (optional) | `gpt-4o-mini` | `litellm` | ~$0.001/prompt | Cloud |
+| Anthropic (optional) | `claude-3.5-haiku` | `litellm` | ~$0.001/prompt | Cloud |
 
-**MVP Choice**: Support all three via config. Default to local Ollama if available.
+**Default**: Gemini 2.0 Flash via Cloud Run. Local Ollama is the offline fallback.
+
+**Cloud Run service endpoints**:
+- `POST /enhance` — accepts `ContextPayload` JSON, returns `{ "enhanced_prompt": "..." }`
+- `GET /health` — returns `{ "status": "ok" }` for Cloud Run health checks
 
 ---
 
@@ -228,7 +237,7 @@ OUTPUT: Write the enhanced prompt only. No explanation.
 | **Clipboard** | Any tool | `pbcopy` (macOS), `xclip`/`xsel`/`wl-copy` (Linux), `pyperclip` (fallback) |
 | **Paste into terminal** | Active terminal session | iTerm2 `session.async_send_text()` (macOS/iTerm2); `tmux send-keys` (tmux) |
 | **API call** | Devin, ChatGPT API | HTTP POST |
-| **File pipe** | Any tool reading a file | Write to `~/.prompt-pulse/last-prompt.txt` |
+| File pipe | Any tool reading a file | Write to `~/.prompt-shell/last-prompt.txt` |
 | **Notification** | User feedback | `osascript` (macOS), `notify-send` (Linux), console (fallback) |
 
 **Default flow**: Copy to clipboard + show notification with preview.
@@ -250,16 +259,16 @@ OUTPUT: Write the enhanced prompt only. No explanation.
 
 | Command | Description |
 |---------|-------------|
-| `prompt-pulse start` | Start the service daemon |
-| `prompt-pulse install-hook` | Install shell hook for current shell (zsh/bash/fish) |
-| `prompt-pulse context` | Capture and display terminal context |
-| `prompt-pulse context --backend tmux` | Capture context using a specific backend |
+| `prompt-shell start` | Start the service daemon |
+| `prompt-shell install-hook` | Install shell hook for current shell (zsh/bash/fish) |
+| `prompt-shell context` | Capture and display terminal context |
+| `prompt-shell context --backend tmux` | Capture context using a specific backend |
 
 ---
 
 ## 7. Configuration
 
-File: `~/.prompt-pulse/config.yaml`
+File: `~/.prompt-shell/config.yaml`
 
 ```yaml
 # Terminal
@@ -315,34 +324,45 @@ error_patterns:
 |-------|-----------|-----------|
 | Language | **Python 3.11+** | Rich ML/audio ecosystem; iTerm2 API is Python-native |
 | Terminal (tmux) | `subprocess` (tmux CLI) | `tmux capture-pane`, `tmux display-message` — works on any terminal inside tmux |
-| Terminal (iterm2) | `iterm2` (pip, optional) | Official iTerm2 scripting library. Optional: `pip install prompt-pulse[iterm2]` |
+| Terminal (iterm2) | `iterm2` (pip, optional) | Official iTerm2 scripting library. Optional: `pip install prompt-shell[iterm2]` |
 | Terminal (shell_hook) | Shell rc files + JSON state | Lightweight precmd/preexec hooks for zsh/bash/fish |
 | Terminal (generic) | Shell history files + `/proc` / `lsof` | Fallback: reads `~/.zsh_history`, `~/.bash_history`, fish history |
 | Audio capture | `sounddevice` + `numpy` | Low-latency, cross-platform audio |
-| VAD | `silero-vad` or `webrtcvad` | Reliable voice activity detection |
-| Transcription | `whisper-cpp-python` | Fast local inference via whisper.cpp bindings |
-| LLM client | `litellm` | Unified interface to OpenAI/Anthropic/Ollama |
+| VAD | Energy-based (custom) | Noise-floor calibration; no C binary dependency |
+| Transcription | `faster-whisper` | Fast local inference with int8 quantization |
+| **LLM (primary)** | **`google-genai` SDK + Gemini 2.0 Flash** | **Google GenAI SDK; hosted on Cloud Run; satisfies challenge requirements** |
+| LLM (fallback) | `litellm` | Unified interface to Ollama/OpenAI/Anthropic for offline/alt use |
+| **Cloud hosting** | **Google Cloud Run** | **Stateless FastAPI service; scales to zero; satisfies GCP hosting requirement** |
 | Hotkeys | `pynput` | Global hotkey registration on macOS and Linux |
 | Clipboard | `pbcopy` / `xclip` / `xsel` / `wl-copy` / `pyperclip` | Platform-native clipboard: `pbcopy` (macOS), `xclip`/`xsel`/`wl-copy` (Linux), `pyperclip` (fallback) |
 | Notifications | `osascript` / `notify-send` | `osascript` (macOS), `notify-send` (Linux), console (fallback) |
 | Config | `pydantic` + `PyYAML` | Typed config with validation |
 | CLI | `typer` | Ergonomic CLI framework |
 | Async | `asyncio` | Required by iTerm2 API; used across the service |
-| Packaging | `uv` / `pyproject.toml` | Modern Python packaging with optional extras (`[iterm2]`) |
+| HTTP client | `httpx` | Async HTTP client for local → Cloud Run calls |
+| Cloud Run service | `fastapi` + `uvicorn` | Lightweight ASGI service for the enhancement endpoint |
+| Packaging | `uv` / `pyproject.toml` | Modern Python packaging with optional extras (`[iterm2]`, `[gcp]`) |
 
 ---
 
 ## 9. Directory Structure
 
 ```
-prompt-pulse/
+prompt-shell/
 ├── SPEC.md                          # This file
 ├── ARCHITECTURE.md                  # System architecture
 ├── AGENTS.md                        # Build/run instructions
 ├── pyproject.toml                   # Project metadata & dependencies
 ├── config.example.yaml              # Example configuration
+├── Dockerfile                       # Local client Docker image
+├── cloud_run_service/               # Google Cloud Run enhancement service
+│   ├── main.py                      # FastAPI app (POST /enhance, GET /health)
+│   ├── prompt_builder.py            # Meta-prompt template renderer
+│   ├── gemini_client.py             # google-genai SDK wrapper
+│   ├── Dockerfile                   # Cloud Run Docker image
+│   └── requirements.txt             # fastapi, uvicorn, google-genai, pydantic
 ├── src/
-│   └── prompt_pulse/
+│   └── prompt_shell/
 │       ├── __init__.py
 │       ├── main.py                  # Entry point, CLI
 │       ├── config.py                # Configuration loader
@@ -366,8 +386,9 @@ prompt-pulse/
 │       │   └── transcribe.py        # Whisper / Apple Speech
 │       ├── enhancer/
 │       │   ├── __init__.py
-│       │   ├── prompt_builder.py    # Meta-prompt construction
-│       │   └── llm_client.py        # LiteLLM wrapper
+│       │   ├── enhancement_client.py  # HTTP client → Cloud Run POST /enhance
+│       │   ├── prompt_builder.py      # Fallback template (no Cloud Run)
+│       │   └── llm_client.py          # LiteLLM wrapper (Ollama/OpenAI/Anthropic fallback)
 │       └── delivery/
 │           ├── __init__.py
 │           ├── clipboard.py         # Cross-platform clipboard delivery
@@ -378,7 +399,8 @@ prompt-pulse/
     ├── test_terminal_backends.py    # Tests for tmux, iterm2, shell_hook, generic
     ├── test_context_builder.py
     ├── test_voice_capture.py
-    ├── test_prompt_pulse.py
+    ├── test_prompt_shell.py
+    ├── test_enhancement_client.py   # Tests for Cloud Run HTTP client
     └── test_error_patterns.py
 ```
 
@@ -389,10 +411,13 @@ prompt-pulse/
 | Concern | Mitigation |
 |---------|-----------|
 | Terminal output may contain secrets | Screen buffer is held in memory only, never persisted. Configurable redaction patterns for API keys, tokens. |
-| Voice data privacy | All transcription local by default (Whisper.cpp). Cloud APIs opt-in only. |
-| LLM data leakage | Local Ollama by default. Cloud LLMs opt-in. Warning shown when cloud is selected. |
-| API keys in config | Support env var references (`${VAR}`) in config. `.prompt-pulse/` added to `.gitignore`. |
+| Voice data privacy | All transcription local by default (faster-whisper). Cloud APIs opt-in only. |
+| Context sent to Cloud Run | ContextPayload is sent over HTTPS to Cloud Run. Redaction patterns strip secrets before serialization. |
+| Gemini API key | Stored as a Cloud Run environment variable (or Secret Manager). Never in config files or source code. |
+| LLM data leakage | Gemini on Cloud Run is default. Local Ollama is the offline fallback. Warning shown when cloud is selected. |
+| API keys in config | Support env var references (`${VAR}`) in config. `.prompt-shell/` added to `.gitignore`. |
 | Microphone access | macOS will prompt for permission. Linux uses PulseAudio/PipeWire permissions. Service cannot bypass. |
+| Cloud Run endpoint | Endpoint is public (unauthenticated) for demo simplicity. Production deployments should add Cloud Run IAM auth. |
 
 ---
 
@@ -403,14 +428,28 @@ prompt-pulse/
 | **P0** | Terminal monitor: multi-backend (tmux, iTerm2, shell_hook, generic) + auto-detection | 2-3 days |
 | **P1** | Voice capture: record + transcribe with Whisper | 1-2 days |
 | **P2** | Context builder: aggregate terminal data + error detection | 1 day |
-| **P3** | Prompt enhancer: meta-prompt + LLM call | 1 day |
-| **P4** | Delivery: clipboard + notification | 0.5 day |
-| **P5** | Hotkey system + CLI + config | 1 day |
-| **P6** | Integration testing + polish | 1-2 days |
+| **P3** | Cloud Run service: FastAPI + Google GenAI SDK + Gemini 2.0 Flash | 1 day |
+| **P4** | Enhancement client: local HTTP client → Cloud Run; fallback to template | 0.5 day |
+| **P5** | Delivery: clipboard + notification | 0.5 day |
+| **P6** | Hotkey system + CLI + config | 1 day |
+| **P7** | GCP deployment: Cloud Run deploy + architecture diagram + demo video | 1 day |
+| **P8** | Integration testing + polish | 1-2 days |
 
 ---
 
-## 12. Future Enhancements (Post-MVP)
+## 12. Challenge Compliance (Gemini Live Agent Challenge)
+
+| Requirement | How Met |
+|-------------|---------|
+| Uses a Gemini model | Gemini 2.0 Flash via `google-genai` SDK in Cloud Run service |
+| Uses Google GenAI SDK or ADK | `google-genai` Python SDK (`genai.Client`) |
+| Uses at least one Google Cloud service | Cloud Run (compute) |
+| Backend hosted on Google Cloud | FastAPI service deployed to Cloud Run |
+| Category fit | **Live Agents** — real-time voice input + live terminal context + multimodal audio/text pipeline |
+
+---
+
+## 13. Future Enhancements (Post-MVP)
 
 - **Windows support**: Terminal backends for Windows Terminal / PowerShell
 - **Prompt history**: SQLite-backed prompt log with search

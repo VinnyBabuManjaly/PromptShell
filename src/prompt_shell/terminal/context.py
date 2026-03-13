@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
-from prompt_pulse.terminal.error_patterns import DetectedError, ErrorDetectionEngine
-from prompt_pulse.terminal.monitor import TerminalState
+from prompt_shell.terminal.error_patterns import DetectedError, ErrorDetectionEngine
+from prompt_shell.terminal.monitor import TerminalState
 
 logger = logging.getLogger(__name__)
 
@@ -34,22 +34,22 @@ class ContextPayload:
 
 
 # Project type detection rules: (marker_file, project_type)
-_PROJECT_MARKERS: list[tuple[str, str, str]] = [
-    ("package.json", "nodejs", "package.json"),
-    ("tsconfig.json", "typescript", "tsconfig.json"),
-    ("Cargo.toml", "rust", "Cargo.toml"),
-    ("go.mod", "go", "go.mod"),
-    ("pyproject.toml", "python", "pyproject.toml"),
-    ("setup.py", "python", "setup.py"),
-    ("requirements.txt", "python", "requirements.txt"),
-    ("Gemfile", "ruby", "Gemfile"),
-    ("pom.xml", "java", "pom.xml"),
-    ("build.gradle", "java", "build.gradle"),
-    ("Makefile", "make", "Makefile"),
-    ("CMakeLists.txt", "cpp", "CMakeLists.txt"),
-    ("docker-compose.yml", "docker", "docker-compose.yml"),
-    ("Dockerfile", "docker", "Dockerfile"),
-    ("terraform.tf", "terraform", "terraform.tf"),
+_PROJECT_MARKERS: list[tuple[str, str]] = [
+    ("package.json", "nodejs"),
+    ("tsconfig.json", "typescript"),
+    ("Cargo.toml", "rust"),
+    ("go.mod", "go"),
+    ("pyproject.toml", "python"),
+    ("setup.py", "python"),
+    ("requirements.txt", "python"),
+    ("Gemfile", "ruby"),
+    ("pom.xml", "java"),
+    ("build.gradle", "java"),
+    ("Makefile", "make"),
+    ("CMakeLists.txt", "cpp"),
+    ("docker-compose.yml", "docker"),
+    ("Dockerfile", "docker"),
+    ("terraform.tf", "terraform"),
 ]
 
 
@@ -61,12 +61,12 @@ def detect_project(cwd: str) -> ProjectInfo:
     path = Path(cwd)
     # Check current dir and walk up
     for check_dir in [path, *path.parents]:
-        for marker_file, project_type, config_file in _PROJECT_MARKERS:
+        for marker_file, project_type in _PROJECT_MARKERS:
             if (check_dir / marker_file).exists():
                 return ProjectInfo(
                     project_type=project_type,
                     project_name=check_dir.name,
-                    config_file=str(check_dir / config_file),
+                    config_file=str(check_dir / marker_file),
                 )
         # Don't go above home directory
         if check_dir == Path.home():
@@ -131,7 +131,7 @@ class ContextBuilder:
             "cwd": context.terminal.cwd,
             "shell": context.terminal.shell,
             "git_branch": context.terminal.git_branch or "unknown",
-            "running_process": context.terminal.running_process,
+            "running_process": context.terminal.running_process or "",
             "last_commands": "\n".join(cmd_summaries) or "none",
             "screen_buffer_last_50": "\n".join(context.terminal.screen_buffer.split("\n")[-50:]),
             "detected_errors": "\n".join(error_summaries) or "none detected",

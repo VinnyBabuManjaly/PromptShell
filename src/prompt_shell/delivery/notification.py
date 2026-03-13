@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import platform
 import shutil
@@ -22,12 +23,17 @@ async def show_notification(
     sound: bool = True,
 ) -> bool:
     """Show a desktop notification (cross-platform)."""
+    loop = asyncio.get_running_loop()
     system = platform.system()
 
     if system == "Darwin":
-        return _notify_macos(title, message, subtitle, sound)
+        return await loop.run_in_executor(
+            None, lambda: _notify_macos(title, message, subtitle, sound)
+        )
     elif system == "Linux":
-        return _notify_linux(title, message, subtitle)
+        return await loop.run_in_executor(
+            None, lambda: _notify_linux(title, message, subtitle)
+        )
     else:
         # Fallback: just log it
         logger.info("Notification: %s — %s", title, message)

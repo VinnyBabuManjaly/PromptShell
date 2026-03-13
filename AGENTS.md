@@ -6,6 +6,11 @@
 - **Python 3.11+**
 - **uv** (recommended) or pip for package management
 
+### For Cloud Run deployment
+- **Google Cloud SDK** (`gcloud`) — [install](https://cloud.google.com/sdk/docs/install)
+- **Google Cloud project** with Cloud Run API enabled
+- **Gemini API key** — get a free key at [Google AI Studio](https://aistudio.google.com/)
+
 ### Optional (for specific backends)
 - **tmux** — recommended for best terminal context (screen buffer capture)
 - **iTerm2 3.3+** (macOS) — with Python API enabled for `iterm2` backend
@@ -124,7 +129,8 @@ terminal:
 
 | Provider | Setup | Config |
 |----------|-------|--------|
-| **Ollama** (default) | `brew install ollama && ollama pull llama3.2:8b` | `provider: ollama` |
+| **Gemini** (default) | Set `GEMINI_API_KEY` + deploy Cloud Run service (see below) | `provider: gemini`, `model: gemini-2.0-flash` |
+| **Ollama** (offline fallback) | `brew install ollama && ollama pull llama3.2:8b` | `provider: ollama` |
 | **OpenAI** | Set `OPENAI_API_KEY` env var | `provider: openai`, `model: gpt-4o-mini` |
 | **Anthropic** | Set `ANTHROPIC_API_KEY` env var | `provider: anthropic`, `model: claude-3.5-haiku` |
 
@@ -174,12 +180,62 @@ terminal:
 | `prompt-pulse install-hook` | Install shell hook |
 | `prompt-pulse init` | Create config directory |
 
+## Google Cloud Run Deployment
+
+The enhancement service runs on Cloud Run. Deploy it once; the local daemon calls it on every hotkey trigger.
+
+```bash
+# Authenticate and set project
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# Enable required APIs
+gcloud services enable run.googleapis.com containerregistry.googleapis.com
+
+# Build and deploy the Cloud Run service
+gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-pulse-enhancer ./cloud_run_service/
+
+gcloud run deploy prompt-pulse-enhancer \
+  --image gcr.io/$PROJECT_ID/prompt-pulse-enhancer \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
+  --memory 512Mi \
+  --min-instances 0 \
+  --max-instances 10
+
+# Get service URL and add to local config
+export CLOUD_RUN_URL=$(gcloud run services describe prompt-pulse-enhancer \
+  --region us-central1 --format 'value(status.url)')
+```
+
+Update `~/.prompt-pulse/config.yaml`:
+```yaml
+llm:
+  provider: gemini
+  model: gemini-2.0-flash
+  api_key: ${GEMINI_API_KEY}
+  cloud_run_url: ${CLOUD_RUN_URL}
+```
+
+### Test the deployed service
+
+```bash
+curl -X POST $CLOUD_RUN_URL/enhance \
+  -H "Content-Type: application/json" \
+  -d '{"voice_transcript": "fix the error", "terminal": {"cwd": "/app", "last_commands": [], "detected_errors": []}}'
+```
+
+---
+
 ## Troubleshooting
 
 - **"No terminal context"**: Install the shell hook (`prompt-pulse install-hook`) or use tmux
 - **"Cannot connect to iTerm2"**: Enable Python API in iTerm2 Settings > General > Magic
 - **"No speech detected"**: Check microphone permissions in System Settings
-- **"LLM unavailable"**: For Ollama, ensure it's running (`ollama serve`). For cloud, check API keys
+- **"Enhancement service unreachable"**: Check `CLOUD_RUN_URL` in config; run `curl $CLOUD_RUN_URL/health` to verify
+- **"LLM unavailable"**: For Gemini, check `GEMINI_API_KEY`. For Ollama fallback, ensure it's running (`ollama serve`). For other cloud providers, check their API keys
 - **"Clipboard not working" (Linux)**: Install `xclip` or `xsel`: `sudo apt install xclip`
 - **"Notifications not showing" (Linux)**: Install `libnotify`: `sudo apt install libnotify-bin`
 - **Hotkeys not working**: macOS needs Accessibility permission; Linux needs X11/Wayland

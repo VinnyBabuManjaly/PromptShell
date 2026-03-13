@@ -1,6 +1,6 @@
 """Tests for the error pattern detection engine."""
 
-from prompt_pulse.terminal.error_patterns import ErrorDetectionEngine
+from prompt_shell.terminal.error_patterns import ErrorDetectionEngine
 
 
 def test_typescript_error():

@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from prompt_pulse.terminal.monitor import (
+from prompt_shell.terminal.monitor import (
     CommandRecord,
     GenericBackend,
     ShellHookBackend,
@@ -69,7 +69,7 @@ def test_read_shell_history_bash_format():
         path = Path(f.name)
     try:
         # Mock Path.home() / ".bash_history" to point to our temp file
-        with patch("prompt_pulse.terminal.monitor.Path") as mock_path:
+        with patch("prompt_shell.terminal.monitor.Path") as mock_path:
             mock_path.home.return_value = path.parent
             mock_path.return_value.name = "bash"
             # Reconstruct the path correctly
@@ -127,7 +127,7 @@ def test_shell_hook_reads_state_file():
         }
         state_file.write_text(json.dumps(state_data))
 
-        with patch("prompt_pulse.terminal.monitor.STATE_DIR", Path(tmpdir)):
+        with patch("prompt_shell.terminal.monitor.STATE_DIR", Path(tmpdir)):
             backend = ShellHookBackend(shell_pid=12345)
             assert backend.is_available() is True
 
@@ -153,7 +153,6 @@ def test_create_backend_unknown():
 # --- GenericBackend snapshot ---
 
 
-@pytest.mark.asyncio
 async def test_generic_backend_snapshot():
     backend = GenericBackend()
     state = await backend.snapshot()
@@ -166,7 +165,6 @@ async def test_generic_backend_snapshot():
 # --- ShellHookBackend snapshot with state file ---
 
 
-@pytest.mark.asyncio
 async def test_shell_hook_snapshot_with_state():
     with tempfile.TemporaryDirectory() as tmpdir:
         state_file = Path(tmpdir) / "state-99999.json"
@@ -182,7 +180,7 @@ async def test_shell_hook_snapshot_with_state():
         }
         state_file.write_text(json.dumps(state_data))
 
-        with patch("prompt_pulse.terminal.monitor.STATE_DIR", Path(tmpdir)):
+        with patch("prompt_shell.terminal.monitor.STATE_DIR", Path(tmpdir)):
             backend = ShellHookBackend(shell_pid=99999)
             state = await backend.snapshot()
             assert state.cwd == "/tmp"
@@ -192,10 +190,9 @@ async def test_shell_hook_snapshot_with_state():
             assert any(c.command == "echo hello" for c in state.last_commands)
 
 
-@pytest.mark.asyncio
 async def test_shell_hook_snapshot_no_state_file():
     with tempfile.TemporaryDirectory() as tmpdir:
-        with patch("prompt_pulse.terminal.monitor.STATE_DIR", Path(tmpdir)):
+        with patch("prompt_shell.terminal.monitor.STATE_DIR", Path(tmpdir)):
             backend = ShellHookBackend(shell_pid=88888)
             state = await backend.snapshot()
             assert state.backend == "shell_hook"
@@ -224,7 +221,6 @@ def test_get_hook_script_fish():
 # --- Git branch detection ---
 
 
-@pytest.mark.asyncio
 async def test_git_branch_detection():
     with tempfile.TemporaryDirectory() as tmpdir:
         git_dir = Path(tmpdir) / ".git"
@@ -236,7 +232,6 @@ async def test_git_branch_detection():
         assert branch == "feature/test-branch"
 
 
-@pytest.mark.asyncio
 async def test_git_branch_detection_detached():
     with tempfile.TemporaryDirectory() as tmpdir:
         git_dir = Path(tmpdir) / ".git"
@@ -248,7 +243,6 @@ async def test_git_branch_detection_detached():
         assert branch == "abc123def456"
 
 
-@pytest.mark.asyncio
 async def test_git_branch_detection_no_git():
     backend = GenericBackend()
     branch = await backend._detect_git_branch("/tmp/definitely-no-git-here-" + str(os.getpid()))

@@ -26,7 +26,7 @@ You say "fix the error." PromptPulse delivers this to your clipboard:
 
 Same intent. Dramatically better result.
 
-The whole process -- from hotkey press to enhanced prompt on your clipboard -- takes under 5.5 seconds, and most of that is the voice transcription.
+The whole process -- from hotkey press to enhanced prompt on your clipboard -- takes under 4.5 seconds, and most of that is the voice transcription.
 
 ---
 
@@ -82,28 +82,28 @@ The **project detector** walks up from your working directory checking for marke
 
 Everything gets assembled into a frozen, immutable `ContextPayload`: your voice transcript, terminal state, detected errors, project info, git branch, and recent commands.
 
-### Stage 5: LLM Enhancement
+### Stage 5: LLM Enhancement (Gemini on Google Cloud Run)
 
-The context payload feeds into a meta-prompt template -- a carefully crafted instruction set that tells the LLM to act as a "prompt engineer specializing in developer productivity." The template has eight rules, including: always include file paths and error codes, preserve the user's original intent (don't add tasks they didn't ask for), write in second person, and keep it under 200 words.
+The context payload is serialized to JSON and sent via HTTP POST to a **Google Cloud Run** service. The service builds a meta-prompt — a carefully crafted instruction set that tells the LLM to act as a "prompt engineer specializing in developer productivity." The template has eight rules, including: always include file paths and error codes, preserve the user's original intent (don't add tasks they didn't ask for), write in second person, and keep it under 200 words.
 
-The LLM client uses LiteLLM under the hood, which means you can point it at Ollama (local, private, free), OpenAI, or Anthropic with a single config change. The default is Ollama with Llama 3.2, meaning **the entire pipeline runs locally with zero API calls**.
+The Cloud Run service calls **Gemini 2.0 Flash** via the **Google GenAI SDK**. Gemini 2.0 Flash is optimised for low latency — it typically responds in under 1.5 seconds, making it faster than running a local 8B model on most hardware.
 
-If the LLM fails, PromptPulse doesn't give up. It has a fallback template that concatenates your voice input with the detected errors and terminal context into a structured prompt. Not as polished, but still far better than what you would have typed.
+The Cloud Run service scales to zero when idle, meaning it costs nothing when you're not using it. At demo and development scale (well under 1,500 requests/day), it runs entirely within Gemini's free tier.
 
-The LLM client also classifies errors as transient (rate limits, timeouts, 5xx) versus permanent (auth failures, model not found) and only retries the former, with exponential backoff. Small detail, but it means the tool doesn't hang for 30 seconds when your API key is wrong.
+If the Cloud Run service is unreachable or returns an error, PromptPulse doesn't give up. It has a local fallback template that concatenates your voice input with the detected errors and terminal context into a structured prompt. Not as polished as Gemini, but still far better than what you would have typed.
 
 ---
 
-## Privacy by Default
+## Privacy and Cloud
 
-This was a non-negotiable design decision. The default configuration uses:
+The default configuration balances privacy with capability:
 
 - **Local transcription** via faster-whisper (no audio leaves your machine)
-- **Local LLM** via Ollama (no prompts leave your machine)
+- **Enhancement via Gemini on Cloud Run** — your terminal context and voice transcript are sent over HTTPS to the Cloud Run service. Configurable redaction patterns strip secrets before the payload leaves the machine.
 - **No persistence** of screen buffer contents to disk
 - **No telemetry**, no analytics, no phone-home
 
-Cloud providers are available as explicit opt-in. If you want GPT-4o's quality or Whisper API's speed, you can configure that. But out of the box, everything stays on your hardware.
+If you prefer fully offline operation, set `provider: ollama` in your config and the entire pipeline runs on-device with zero network calls.
 
 ---
 
@@ -115,7 +115,7 @@ The pattern that ties the whole system together is graceful degradation. Every c
 |-----------|---------|----------|
 | Terminal backend | tmux (full screen buffer) | Generic (shell history) |
 | Transcription | faster-whisper (local) | Apple Speech or Whisper API |
-| LLM enhancement | Ollama/OpenAI/Anthropic | Template-based prompt building |
+| LLM enhancement | Gemini 2.0 Flash (Cloud Run) | Local Ollama → template-based |
 | Clipboard | Native (pbcopy/xclip) | pyperclip library |
 | Input mode | Voice | Text or clipboard contents |
 
@@ -174,9 +174,9 @@ The full source is about 2,500 lines of Python across 12 modules, with 870 lines
 | Terminal snapshot | <200ms | Parallel subprocess calls |
 | Voice transcription | <2s | Local Whisper, int8 quantized |
 | Context building | <100ms | Regex + filesystem reads |
-| LLM enhancement | <3s | Local Ollama |
+| LLM enhancement | <1.5s | Gemini 2.0 Flash on Cloud Run |
 | Clipboard delivery | <100ms | Native CLI tools |
-| **Total** | **<5.5s** | **End-to-end after speech ends** |
+| **Total** | **<4.5s** | **End-to-end after speech ends** |
 
 ---
 

@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from prompt_pulse.config import LLMConfig
-from prompt_pulse.enhancer.llm_client import (
+from prompt_shell.config import LLMConfig
+from prompt_shell.enhancer.llm_client import (
     EnhanceResult,
     LLMClient,
     _is_transient,
@@ -84,7 +84,6 @@ class TestIsTransient:
 
 
 class TestLLMClientRetry:
-    @pytest.mark.asyncio
     async def test_succeeds_first_try(self):
         config = _make_config()
         client = LLMClient(config, max_retries=2, retry_delay=0)
@@ -96,7 +95,6 @@ class TestLLMClientRetry:
         assert result == "enhanced text"
         assert mock.call_count == 1
 
-    @pytest.mark.asyncio
     async def test_retries_on_transient_then_succeeds(self):
         config = _make_config()
         client = LLMClient(config, max_retries=2, retry_delay=0)
@@ -111,7 +109,6 @@ class TestLLMClientRetry:
         assert result == "recovered"
         assert mock.call_count == 2
 
-    @pytest.mark.asyncio
     async def test_retries_exhausted_raises(self):
         config = _make_config()
         client = LLMClient(config, max_retries=2, retry_delay=0)
@@ -125,7 +122,6 @@ class TestLLMClientRetry:
         # 1 initial + 2 retries = 3 attempts
         assert mock.call_count == 3
 
-    @pytest.mark.asyncio
     async def test_permanent_error_no_retry(self):
         config = _make_config()
         client = LLMClient(config, max_retries=2, retry_delay=0)
@@ -142,7 +138,6 @@ class TestLLMClientRetry:
         # Should not retry permanent errors.
         assert mock.call_count == 1
 
-    @pytest.mark.asyncio
     async def test_no_retries_when_max_zero(self):
         config = _make_config()
         client = LLMClient(config, max_retries=0, retry_delay=0)
@@ -162,7 +157,6 @@ class TestLLMClientRetry:
 
 
 class TestEnhancePrompt:
-    @pytest.mark.asyncio
     async def test_success_returns_result(self):
         config = _make_config()
 
@@ -175,7 +169,6 @@ class TestEnhancePrompt:
         assert result.used_fallback is False
         assert result.error is None
 
-    @pytest.mark.asyncio
     async def test_fallback_on_error(self):
         config = _make_config()
 
@@ -188,7 +181,6 @@ class TestEnhancePrompt:
         assert result.used_fallback is True
         assert "refused" in result.error
 
-    @pytest.mark.asyncio
     async def test_raises_without_fallback(self):
         config = _make_config()
 
@@ -198,7 +190,6 @@ class TestEnhancePrompt:
             with pytest.raises(RuntimeError, match="bad"):
                 await enhance_prompt("meta", config, fallback_text=None)
 
-    @pytest.mark.asyncio
     async def test_fallback_on_permanent_error(self):
         config = _make_config()
         perm = RuntimeError("invalid model")
@@ -210,3 +201,30 @@ class TestEnhancePrompt:
 
         assert result.used_fallback is True
         assert "invalid model" in result.error
+
+
+# ---------------------------------------------------------------------------
+# LLMClient._resolve_model_name — provider prefix mapping
+# ---------------------------------------------------------------------------
+
+
+class TestResolveModelName:
+    def test_resolve_model_ollama(self):
+        config = LLMConfig(provider="ollama", model="llama3.2:8b")
+        client = LLMClient(config)
+        assert client._model_name == "ollama/llama3.2:8b"
+
+    def test_resolve_model_openai(self):
+        config = LLMConfig(provider="openai", model="gpt-4o-mini")
+        client = LLMClient(config)
+        assert client._model_name == "gpt-4o-mini"
+
+    def test_resolve_model_anthropic(self):
+        config = LLMConfig(provider="anthropic", model="claude-3-5-haiku-20241022")
+        client = LLMClient(config)
+        assert client._model_name == "anthropic/claude-3-5-haiku-20241022"
+
+    def test_resolve_model_gemini(self):
+        config = LLMConfig(provider="gemini", model="gemini-2.0-flash")
+        client = LLMClient(config)
+        assert client._model_name == "gemini/gemini-2.0-flash"

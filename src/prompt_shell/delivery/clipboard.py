@@ -7,10 +7,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import os
 import platform
 import shutil
-import subprocess
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +53,13 @@ async def deliver_to_clipboard(text: str) -> bool:
     if cmds:
         copy_cmd, _ = cmds
         try:
-            process = subprocess.Popen(
-                copy_cmd,
-                stdin=subprocess.PIPE,
-                env={"LANG": "en_US.UTF-8", "PATH": "/usr/bin:/usr/local/bin:/bin"},
+            env = {**os.environ, "LANG": "en_US.UTF-8"}
+            process = await asyncio.create_subprocess_exec(
+                *copy_cmd,
+                stdin=asyncio.subprocess.PIPE,
+                env=env,
             )
-            process.communicate(input=text.encode("utf-8"))
+            await process.communicate(input=text.encode("utf-8"))
             if process.returncode == 0:
                 logger.info("Enhanced prompt copied to clipboard (%d chars)", len(text))
                 return True
@@ -85,14 +87,15 @@ async def read_from_clipboard() -> str:
     if cmds:
         _, paste_cmd = cmds
         try:
-            result = subprocess.run(
-                paste_cmd,
-                capture_output=True,
-                text=True,
-                env={"LANG": "en_US.UTF-8", "PATH": "/usr/bin:/usr/local/bin:/bin"},
+            env = {**os.environ, "LANG": "en_US.UTF-8"}
+            process = await asyncio.create_subprocess_exec(
+                *paste_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                env=env,
             )
-            if result.returncode == 0:
-                return result.stdout
+            stdout, _ = await process.communicate()
+            if process.returncode == 0:
+                return stdout.decode("utf-8")
         except Exception:
             pass
 

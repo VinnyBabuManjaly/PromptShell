@@ -12,6 +12,9 @@ captures your full terminal context — screen buffer, working directory,
 recent commands, detected error patterns, git branch — and rewrites it into
 a precise, actionable prompt that any AI assistant can act on immediately.
 
+Enhancement is powered by **Gemini 2.0 Flash** running on **Google Cloud Run**,
+using the **Google GenAI SDK**.
+
 ## Why
 
 AI coding assistants work best when prompts are specific. But when you are
@@ -31,11 +34,25 @@ The service captures:
   - Last command: npm run build (exit code 1)
   - Git branch: feature/auth-refactor
 
+  Local client sends ContextPayload → Cloud Run → Gemini 2.0 Flash
+
 Enhanced prompt:
   "Fix the TypeScript compilation error TS2345 in src/auth/middleware.ts:42 —
    Argument of type 'string' is not assignable to parameter of type 'AuthToken'.
    The last command `npm run build` failed with exit code 1.
    CWD: ~/project/backend, branch: feature/auth-refactor"
+```
+
+## Architecture
+
+```
+Local Client (macOS / Linux)          Google Cloud Run
+────────────────────────────          ────────────────────────────────
+Hotkey listener                       POST /enhance
+Terminal snapshot (4 backends)   →    FastAPI service
+Voice capture + transcription         Google GenAI SDK
+Context builder                   ←   Gemini 2.0 Flash
+Clipboard delivery
 ```
 
 ## Features
@@ -75,12 +92,12 @@ info (type, code, file, line, message) for 12+ pattern families:
   - **OpenAI Whisper API** (cloud, most accurate for jargon)
   - **Apple Speech Framework** (macOS native, lowest latency)
 
-### Prompt Enhancement
+### Prompt Enhancement (Gemini on Cloud Run)
 
-- Merges the voice transcript with terminal context into a meta-prompt
-- Sends it to an LLM via `litellm` — supports **Ollama** (local, default),
-  **OpenAI**, and **Anthropic**
-- Falls back to a template-based prompt if the LLM is unavailable
+- Serializes terminal context + voice transcript into a `ContextPayload`
+- Sends it via HTTP POST to the **Cloud Run** enhancement service
+- The service builds a meta-prompt and calls **Gemini 2.0 Flash** via the **Google GenAI SDK**
+- Falls back to a template-based prompt if the Cloud Run service is unavailable
 
 ### Delivery
 
@@ -112,7 +129,7 @@ prompt-pulse init           # Generate default config
 
 - Screen buffer is held in memory only, never persisted to disk
 - All transcription is local by default (Whisper); cloud APIs are opt-in
-- Local Ollama is the default LLM; cloud providers require explicit config
+- Gemini API key is read from the `GEMINI_API_KEY` environment variable; never stored in config files
 - API keys are referenced via environment variables (`${VAR}` syntax in config)
 - Configurable redaction patterns for secrets in terminal output
 
@@ -147,21 +164,49 @@ voice:
   whisper_model: base.en
 
 llm:
-  provider: ollama       # ollama | openai | anthropic
-  model: llama3.2:8b
-  api_key: ${OPENAI_API_KEY}
+  provider: gemini                          # gemini | ollama | openai | anthropic
+  model: gemini-2.0-flash
+  api_key: ${GEMINI_API_KEY}
+  cloud_run_url: ${CLOUD_RUN_URL}           # URL of the deployed Cloud Run service
 
 delivery:
   method: clipboard      # clipboard | iterm_paste | api | file
   show_notification: true
 ```
 
+## Google Cloud Deployment
+
+The enhancement service runs on Cloud Run. Deploy it once; the local client calls it on every hotkey trigger.
+
+```bash
+# Set your project and API key
+export PROJECT_ID=your-gcp-project-id
+export GEMINI_API_KEY=your-gemini-api-key
+
+# Build and deploy
+gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-pulse-enhancer ./cloud_run_service/
+gcloud run deploy prompt-pulse-enhancer \
+  --image gcr.io/$PROJECT_ID/prompt-pulse-enhancer \
+  --platform managed \
+  --region us-central1 \
+  --allow-unauthenticated \
+  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
+  --memory 512Mi \
+  --min-instances 0
+
+# Copy the service URL into your config
+export CLOUD_RUN_URL=$(gcloud run services describe prompt-pulse-enhancer \
+  --region us-central1 --format 'value(status.url)')
+```
+
+Cost at demo/dev scale: **~$0/month** (Cloud Run free tier covers millions of requests; Gemini 2.0 Flash free tier covers 1,500 req/day).
+
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
 | [SPEC.md](SPEC.md) | Full technical specification — problem statement, requirements, API design, data models, and implementation plan |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture — ASCII diagrams, module layout, data flow, backend selection logic, and extension points |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture — ASCII diagrams, module layout, data flow, Cloud Run deployment, and extension points |
 | [AGENTS.md](AGENTS.md) | Development guide — prerequisites, build/test/lint commands, cross-platform notes, and contribution workflow |
 
 ## Development
