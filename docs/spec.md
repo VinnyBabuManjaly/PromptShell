@@ -285,11 +285,12 @@ voice:
   max_duration_sec: 30
   vad_aggressiveness: 2
 
-# LLM
+# LLM (default: Gemini 2.0 Flash via Cloud Run)
 llm:
-  provider: ollama             # ollama | openai | anthropic
-  model: llama3.2:8b
-  api_key: ${OPENAI_API_KEY}   # env var reference
+  provider: gemini             # gemini | ollama | openai | anthropic
+  model: gemini-2.0-flash
+  api_key: ${GEMINI_API_KEY}   # env var reference
+  cloud_run_url: ${CLOUD_RUN_URL}  # URL of the deployed Cloud Run service
   temperature: 0.3
   max_tokens: 500
 
@@ -349,12 +350,19 @@ error_patterns:
 
 ```
 prompt-shell/
-├── SPEC.md                          # This file
-├── ARCHITECTURE.md                  # System architecture
-├── AGENTS.md                        # Build/run instructions
+├── README.md                        # Project overview and quick start
+├── AGENTS.md                        # Development guide (build/test/deploy)
+├── CLAUDE.md                        # Coding standards for AI-assisted development
 ├── pyproject.toml                   # Project metadata & dependencies
-├── config.example.yaml              # Example configuration
-├── Dockerfile                       # Local client Docker image
+├── config.example.yaml              # Annotated configuration template
+├── Dockerfile                       # Local client Docker image (optional)
+├── docs/
+│   ├── spec.md                      # This file — full technical specification
+│   ├── architecture.md              # System architecture diagrams and data flow
+│   ├── article.md                   # Published article about the project
+│   └── internal/
+│       ├── detailed_overview.md     # Deep-dive codebase onboarding guide
+│       └── what_makes_it_different.md  # Competitive analysis
 ├── cloud_run_service/               # Google Cloud Run enhancement service
 │   ├── main.py                      # FastAPI app (POST /enhance, GET /health)
 │   ├── prompt_builder.py            # Meta-prompt template renderer
@@ -364,44 +372,37 @@ prompt-shell/
 ├── src/
 │   └── prompt_shell/
 │       ├── __init__.py
-│       ├── main.py                  # Entry point, CLI
-│       ├── config.py                # Configuration loader
+│       ├── main.py                  # Typer CLI + hotkey daemon + pipeline orchestrator
+│       ├── config.py                # Pydantic models for config.yaml
 │       ├── terminal/
 │       │   ├── __init__.py
-│       │   ├── base.py              # TerminalBackend ABC (common interface)
-│       │   ├── tmux.py              # tmux backend (capture-pane, display-message)
-│       │   ├── iterm2_backend.py    # iTerm2 backend (optional, macOS only)
-│       │   ├── shell_hook.py        # Shell hook backend (reads state file)
-│       │   ├── generic.py           # Generic fallback (history files + /proc/lsof)
-│       │   ├── detector.py          # Auto-detection: tmux → iterm2 → shell_hook → generic
-│       │   ├── hooks/               # Shell hook install scripts
-│       │   │   ├── zsh_hook.sh      # precmd/preexec for zsh
-│       │   │   ├── bash_hook.sh     # PROMPT_COMMAND/DEBUG trap for bash
-│       │   │   └── fish_hook.fish   # fish_postexec for fish
-│       │   ├── context.py           # Context builder
-│       │   └── error_patterns.py    # Error detection regex engine
+│       │   ├── monitor.py           # TerminalBackend ABC + 4 concrete backends
+│       │   │                        #   (TmuxBackend, ITerm2Backend, ShellHookBackend, GenericBackend)
+│       │   ├── context.py           # Aggregates TerminalState → ContextPayload; detects project type
+│       │   └── error_patterns.py    # Regex engine for 12+ error families
 │       ├── voice/
 │       │   ├── __init__.py
-│       │   ├── capture.py           # Audio recording + VAD
-│       │   └── transcribe.py        # Whisper / Apple Speech
+│       │   ├── capture.py           # sounddevice mic recording + energy-based VAD
+│       │   └── transcribe.py        # Pluggable engines: faster-whisper / OpenAI API / Apple Speech
 │       ├── enhancer/
 │       │   ├── __init__.py
-│       │   ├── enhancement_client.py  # HTTP client → Cloud Run POST /enhance
-│       │   ├── prompt_builder.py      # Fallback template (no Cloud Run)
-│       │   └── llm_client.py          # LiteLLM wrapper (Ollama/OpenAI/Anthropic fallback)
+│       │   ├── enhancement_client.py  # httpx async client → POST /enhance to Cloud Run
+│       │   ├── prompt_builder.py      # Fallback template-based prompt (when Cloud Run unreachable)
+│       │   └── llm_client.py          # litellm wrapper: Ollama/OpenAI/Anthropic (offline fallback)
 │       └── delivery/
 │           ├── __init__.py
-│           ├── clipboard.py         # Cross-platform clipboard delivery
-│           ├── terminal_paste.py    # Terminal paste (iTerm2 / tmux send-keys)
-│           └── notification.py      # Cross-platform notifications
+│           ├── clipboard.py         # Cross-platform: pbcopy / xclip / xsel / wl-copy / pyperclip
+│           ├── iterm_paste.py       # Optional: paste directly into iTerm2 session
+│           └── notification.py      # osascript (macOS) / notify-send (Linux)
 └── tests/
-    ├── test_terminal_monitor.py
-    ├── test_terminal_backends.py    # Tests for tmux, iterm2, shell_hook, generic
+    ├── test_config.py
     ├── test_context_builder.py
-    ├── test_voice_capture.py
-    ├── test_prompt_shell.py
-    ├── test_enhancement_client.py   # Tests for Cloud Run HTTP client
-    └── test_error_patterns.py
+    ├── test_enhancement_client.py
+    ├── test_error_patterns.py
+    ├── test_llm_client.py
+    ├── test_prompt_pulse.py         # Main pipeline integration tests
+    ├── test_terminal_monitor.py
+    └── test_voice_capture.py
 ```
 
 ---
