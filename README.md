@@ -212,8 +212,8 @@ Cost at demo/dev scale: **~$0/month** (Cloud Run free tier covers millions of re
 ## Development
 
 ```bash
-git clone https://github.com/disencd/prompt-shell.git
-cd prompt-shell
+git clone https://github.com/VinnyBabuManjaly/PromptShell.git
+cd PromptShell
 uv sync --extra dev
 uv run ruff check src/ tests/
 uv run pytest tests/ -v
