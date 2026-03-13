@@ -892,13 +892,13 @@ Focus on:
   Architecture Improvements
 
   4. Cloud Run enhancement_client.py is unimplemented:
-  The architecture was updated in documentation but the actual src/prompt_pulse/enhancer/enhancement_client.py doesn't exist.
+  The architecture was updated in documentation but the actual src/prompt_shell/enhancer/enhancement_client.py doesn't exist.
   run_pipeline() in main.py still calls enhance_prompt() which calls litellm directly. The HTTP client to Cloud Run needs to be written
   and wired into the pipeline dispatch logic.
 
   5. DEFAULT_CONFIG path breaks in wheel installation (config.py:14):
   Path(__file__).parent.parent.parent / "config.example.yaml" works from the source tree but the file is not included in the wheel (it's
-   outside src/prompt_pulse/). Either move config.example.yaml inside the package (e.g., src/prompt_pulse/data/config.example.yaml) and
+   outside src/prompt_shell/). Either move config.example.yaml inside the package (e.g., src/prompt_shell/data/config.example.yaml) and
   use importlib.resources to access it, or use package_data in pyproject.toml.
 
   6. TmuxBackend runs 5 separate subprocesses for session info (monitor.py:437–458):

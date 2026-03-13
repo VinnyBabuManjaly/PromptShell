@@ -88,7 +88,7 @@ uv run ruff format src/ tests/
 ## Project Structure
 
 ```
-src/prompt_pulse/
+src/prompt_shell/
 ├── main.py              # CLI entry point (typer) + hotkey daemon + pipeline
 ├── config.py            # Pydantic config models + YAML loader
 ├── terminal/
