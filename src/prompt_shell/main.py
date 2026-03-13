@@ -258,7 +258,7 @@ def start(
     config_file: Path | None = typer.Option(None, "--config", "-c", help="Path to config.yaml"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging"),
 ):
-    """Start the PromptPulse daemon with global hotkeys."""
+    """Start the PromptShell daemon with global hotkeys."""
     _setup_logging(verbose)
     config = load_config(config_file)
     try:

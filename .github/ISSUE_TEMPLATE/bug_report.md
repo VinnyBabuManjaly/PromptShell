@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in prompt-pulse
+about: Report a bug in prompt-shell
 title: "[BUG] "
 labels: bug
 assignees: ""
@@ -11,7 +11,7 @@ A clear and concise description of the bug.
 
 **To Reproduce**
 Steps to reproduce:
-1. Run `prompt-pulse ...`
+1. Run `prompt-shell ...`
 2. ...
 3. See error
 

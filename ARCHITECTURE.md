@@ -1,8 +1,8 @@
-# Architecture — PromptPulse
+# Architecture — PromptShell
 
 ## System Overview
 
-PromptPulse uses a **split client/cloud architecture**. The local daemon handles everything that needs to be on-device (terminal capture, voice, hotkeys, delivery). The enhancement step runs on Google Cloud Run, where a FastAPI service calls the Gemini API via the Google GenAI SDK. This satisfies the Gemini Live Agent Challenge requirements: Gemini model, Google GenAI SDK, Google Cloud service, and backend hosted on Google Cloud.
+PromptShell uses a **split client/cloud architecture**. The local daemon handles everything that needs to be on-device (terminal capture, voice, hotkeys, delivery). The enhancement step runs on Google Cloud Run, where a FastAPI service calls the Gemini API via the Google GenAI SDK. This satisfies the Gemini Live Agent Challenge requirements: Gemini model, Google GenAI SDK, Google Cloud service, and backend hosted on Google Cloud.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -323,11 +323,11 @@ User       Hotkey      VoiceCapture   TerminalBackend  ContextBuilder  Enhanceme
 
 ```bash
 # Build and push image
-gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-pulse-enhancer ./cloud_run_service/
+gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-shell-enhancer ./cloud_run_service/
 
 # Deploy to Cloud Run
-gcloud run deploy prompt-pulse-enhancer \
-  --image gcr.io/$PROJECT_ID/prompt-pulse-enhancer \
+gcloud run deploy prompt-shell-enhancer \
+  --image gcr.io/$PROJECT_ID/prompt-shell-enhancer \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \

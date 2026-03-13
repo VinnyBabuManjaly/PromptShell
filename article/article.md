@@ -1,6 +1,6 @@
 # I Built a Voice-Activated Prompt Enhancer That Reads Your Terminal
 
-**How PromptPulse turns "fix the error" into a surgical prompt your AI assistant can actually act on.**
+**How PromptShell turns "fix the error" into a surgical prompt your AI assistant can actually act on.**
 
 ---
 
@@ -12,15 +12,15 @@ And the AI responds: *"Could you provide more context? What error are you seeing
 
 So you go back to the terminal. Copy the error. Paste it in. Add the file name. Mention the branch. Describe what you were trying to do. By the time you've written a prompt the AI can work with, you've spent more time explaining the problem than it would have taken to fix it yourself.
 
-I built PromptPulse to eliminate that friction entirely.
+I built PromptShell to eliminate that friction entirely.
 
 ---
 
-## What PromptPulse Does
+## What PromptShell Does
 
-PromptPulse is a lightweight daemon that sits between you and your AI coding assistant. It monitors your terminal in real-time, listens for voice commands, and transforms vague prompts into precise, context-rich instructions.
+PromptShell is a lightweight daemon that sits between you and your AI coding assistant. It monitors your terminal in real-time, listens for voice commands, and transforms vague prompts into precise, context-rich instructions.
 
-You say "fix the error." PromptPulse delivers this to your clipboard:
+You say "fix the error." PromptShell delivers this to your clipboard:
 
 > Fix the TypeScript compilation error TS2345 in src/auth/middleware.ts:42 -- Argument of type 'string' is not assignable to parameter of type 'AuthToken'. The last command `npm run build` failed with exit code 1. Working directory: ~/project/backend, git branch: feature/auth-refactor. This is a Node.js project using TypeScript.
 
@@ -32,7 +32,7 @@ The whole process -- from hotkey press to enhanced prompt on your clipboard -- t
 
 ## The Five-Stage Pipeline
 
-Under the hood, PromptPulse runs a five-stage async pipeline every time you trigger it:
+Under the hood, PromptShell runs a five-stage async pipeline every time you trigger it:
 
 ```
 Hotkey -> Terminal Capture -> Voice Input -> Context Building -> LLM Enhancement -> Clipboard
@@ -42,23 +42,23 @@ Each stage is designed to be fast, modular, and fault-tolerant. Let me walk thro
 
 ### Stage 1: Terminal Context Capture
 
-This is where PromptPulse gets its edge. Instead of asking you to paste your terminal output, it reads it directly.
+This is where PromptShell gets its edge. Instead of asking you to paste your terminal output, it reads it directly.
 
 The system supports four terminal backends, each progressively more capable:
 
-**tmux** is the richest. If you're inside a tmux session, PromptPulse runs `tmux capture-pane` to grab your screen buffer -- the actual text visible in your terminal -- plus your current directory, running process, and session metadata. All three tmux commands run in parallel via `asyncio.gather`, keeping the snapshot under 200ms.
+**tmux** is the richest. If you're inside a tmux session, PromptShell runs `tmux capture-pane` to grab your screen buffer -- the actual text visible in your terminal -- plus your current directory, running process, and session metadata. All three tmux commands run in parallel via `asyncio.gather`, keeping the snapshot under 200ms.
 
 **iTerm2** uses the official Python API to pull screen contents, session variables, and even prompt marks for command history. macOS only, but if you're already in iTerm2, it's seamless.
 
-**Shell Hook** is the universal option. PromptPulse installs a lightweight hook into your shell (zsh, bash, or fish) that writes a JSON state file on every command. No screen buffer, but it captures your working directory, last command, and exit code from any terminal emulator.
+**Shell Hook** is the universal option. PromptShell installs a lightweight hook into your shell (zsh, bash, or fish) that writes a JSON state file on every command. No screen buffer, but it captures your working directory, last command, and exit code from any terminal emulator.
 
 **Generic** is the fallback. It reads your shell history file and detects your CWD via `lsof` (macOS) or `/proc` (Linux). Always available, no setup required.
 
-Backend detection is automatic. PromptPulse probes in priority order and uses the best available option. You never have to configure it unless you want to.
+Backend detection is automatic. PromptShell probes in priority order and uses the best available option. You never have to configure it unless you want to.
 
 ### Stage 2: Voice Capture
 
-PromptPulse records from your microphone using energy-based voice activity detection. When you press the hotkey, it starts by listening to 0.5 seconds of silence to calibrate your ambient noise level, then sets the speech threshold at 3x the noise floor. This means it adapts to your environment automatically -- coffee shop, quiet office, mechanical keyboard, it adjusts.
+PromptShell records from your microphone using energy-based voice activity detection. When you press the hotkey, it starts by listening to 0.5 seconds of silence to calibrate your ambient noise level, then sets the speech threshold at 3x the noise floor. This means it adapts to your environment automatically -- coffee shop, quiet office, mechanical keyboard, it adjusts.
 
 Once it detects speech, it records until you stop talking (configurable silence timeout, default 1 second). The entire capture happens in 30ms frames streamed through an async queue. No files touch disk until transcription.
 
@@ -70,7 +70,7 @@ Three engines, automatic fallback:
 - **Apple Speech** uses macOS's built-in `SFSpeechRecognizer` via PyObjC. Also fully local.
 - **OpenAI Whisper API** for when you want cloud accuracy and don't mind the latency.
 
-If your preferred engine isn't available, PromptPulse falls through to the next one automatically. You don't get an error -- you get a result.
+If your preferred engine isn't available, PromptShell falls through to the next one automatically. You don't get an error -- you get a result.
 
 ### Stage 4: Context Building and Error Detection
 
@@ -90,7 +90,7 @@ The Cloud Run service calls **Gemini 2.0 Flash** via the **Google GenAI SDK**. G
 
 The Cloud Run service scales to zero when idle, meaning it costs nothing when you're not using it. At demo and development scale (well under 1,500 requests/day), it runs entirely within Gemini's free tier.
 
-If the Cloud Run service is unreachable or returns an error, PromptPulse doesn't give up. It has a local fallback template that concatenates your voice input with the detected errors and terminal context into a structured prompt. Not as polished as Gemini, but still far better than what you would have typed.
+If the Cloud Run service is unreachable or returns an error, PromptShell doesn't give up. It has a local fallback template that concatenates your voice input with the detected errors and terminal context into a structured prompt. Not as polished as Gemini, but still far better than what you would have typed.
 
 ---
 
@@ -119,7 +119,7 @@ The pattern that ties the whole system together is graceful degradation. Every c
 | Clipboard | Native (pbcopy/xclip) | pyperclip library |
 | Input mode | Voice | Text or clipboard contents |
 
-Nothing is a hard dependency. You can run PromptPulse without tmux, without a microphone, without an LLM running, and it will still give you something better than what you started with.
+Nothing is a hard dependency. You can run PromptShell without tmux, without a microphone, without an LLM running, and it will still give you something better than what you started with.
 
 ---
 
@@ -128,29 +128,29 @@ Nothing is a hard dependency. You can run PromptPulse without tmux, without a mi
 Install:
 
 ```bash
-pip install prompt-pulse
+pip install prompt-shell
 # or
-uv pip install prompt-pulse
+uv pip install prompt-shell
 ```
 
 Initialize and set up:
 
 ```bash
-prompt-pulse init              # Creates ~/.prompt-pulse/config.yaml
-prompt-pulse install-hook      # Installs shell hook (restart shell after)
+prompt-shell init              # Creates ~/.prompt-shell/config.yaml
+prompt-shell install-hook      # Installs shell hook (restart shell after)
 ```
 
 Three ways to use it:
 
 ```bash
 # Voice input -- press hotkey, speak, get enhanced prompt on clipboard
-prompt-pulse start
+prompt-shell start
 
 # Direct text enhancement
-prompt-pulse enhance "fix the build error"
+prompt-shell enhance "fix the build error"
 
 # Enhance whatever's on your clipboard with terminal context
-prompt-pulse enhance --clipboard
+prompt-shell enhance --clipboard
 ```
 
 In daemon mode, the default hotkeys are:
@@ -184,7 +184,7 @@ The full source is about 2,500 lines of Python across 12 modules, with 870 lines
 
 AI coding assistants are remarkably capable, but they're limited by the quality of their input. The gap between what a developer *means* and what they *type* is where productivity dies. Context switching between terminal and chat window, manually copying error messages, remembering to mention the branch and project type -- it's all friction that compounds across a day of work.
 
-PromptPulse eliminates that gap. You express intent; it supplies context. The AI gets a prompt it can act on immediately instead of one it needs to interrogate you about.
+PromptShell eliminates that gap. You express intent; it supplies context. The AI gets a prompt it can act on immediately instead of one it needs to interrogate you about.
 
 It's the difference between a junior developer who says "it's broken" and a senior developer who files a bug report with the stack trace, reproduction steps, and the commit that introduced the regression.
 
@@ -192,4 +192,4 @@ Except now you get the senior developer's prompt by pressing a hotkey and saying
 
 ---
 
-*PromptPulse is open source and available on [GitHub](https://github.com/disencd/prompt-pulse). It runs on macOS and Linux, requires Python 3.11+, and works entirely offline by default.*
+*PromptShell is open source and available on [GitHub](https://github.com/disencd/prompt-shell). It runs on macOS and Linux, requires Python 3.11+, and works entirely offline by default.*

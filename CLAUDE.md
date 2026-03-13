@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Does
 
-prompt-pulse is a voice-activated terminal context enhancer. It runs as a daemon, listens for a hotkey, captures your terminal state (screen buffer, CWD, recent commands, git branch, detected errors), optionally records voice input, then uses an LLM to rewrite your vague command into a precise, actionable AI prompt — delivering it to your clipboard.
+prompt-shell is a voice-activated terminal context enhancer. It runs as a daemon, listens for a hotkey, captures your terminal state (screen buffer, CWD, recent commands, git branch, detected errors), optionally records voice input, then uses an LLM to rewrite your vague command into a precise, actionable AI prompt — delivering it to your clipboard.
 
 ## Common Commands
 
@@ -28,9 +28,9 @@ uv run pytest tests/test_error_patterns.py -v
 uv build
 
 # Run as CLI
-uv run prompt-pulse start
-uv run prompt-pulse enhance "fix the error"
-uv run prompt-pulse context
+uv run prompt-shell start
+uv run prompt-shell enhance "fix the error"
+uv run prompt-shell context
 ```
 
 **Ruff config:** 100-char line length, rules E/F/I/N/W/UP. Long lines are suppressed in `monitor.py`, `error_patterns.py`, and `test_error_patterns.py` (embedded shell scripts and regex patterns).
@@ -77,11 +77,11 @@ Cloud Run service (cloud_run_service/)
 - **Backend auto-detection order:** tmux → iTerm2 → shell_hook → generic. Generic is always available (reads shell history + `/proc/<pid>/cwd`).
 - **All state objects are frozen dataclasses** (`TerminalState`, `ContextPayload`) for thread-safety in the async hotkey daemon.
 - **Cloud Run failure degrades gracefully** to a local template-based prompt rather than surfacing an error to the user.
-- **Shell hook** (`install-hook` command) writes `~/.prompt-pulse/shell_state.json` after each command — this feeds the `ShellHookBackend` with CWD, last command, and exit code.
+- **Shell hook** (`install-hook` command) writes `~/.prompt-shell/shell_state.json` after each command — this feeds the `ShellHookBackend` with CWD, last command, and exit code.
 
 ### Config
 
-Runtime config is loaded from `~/.prompt-pulse/config.yaml` (or `XDG_CONFIG_HOME`). See `config.example.yaml` for all options. Environment variable substitution is supported (e.g., `api_key: ${GEMINI_API_KEY}`).
+Runtime config is loaded from `~/.prompt-shell/config.yaml` (or `XDG_CONFIG_HOME`). See `config.example.yaml` for all options. Environment variable substitution is supported (e.g., `api_key: ${GEMINI_API_KEY}`).
 
 Default stack: Gemini 2.0 Flash on Cloud Run, faster-whisper base.en (local), clipboard delivery.
 Offline fallback: Ollama + llama3.2:8b (local).

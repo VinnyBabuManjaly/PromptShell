@@ -27,14 +27,14 @@ def _get_gemini_client():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("PromptPulse Cloud Run service starting")
+    logger.info("PromptShell Cloud Run service starting")
     _get_gemini_client()  # Fail fast if API key is missing
     yield
-    logger.info("PromptPulse Cloud Run service stopping")
+    logger.info("PromptShell Cloud Run service stopping")
 
 
 app = FastAPI(
-    title="PromptPulse Enhancement Service",
+    title="PromptShell Enhancement Service",
     description="Enhances developer prompts using Gemini 2.0 Flash",
     version="0.1.0",
     lifespan=lifespan,

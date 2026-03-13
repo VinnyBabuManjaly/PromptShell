@@ -31,9 +31,7 @@ async def show_notification(
             None, lambda: _notify_macos(title, message, subtitle, sound)
         )
     elif system == "Linux":
-        return await loop.run_in_executor(
-            None, lambda: _notify_linux(title, message, subtitle)
-        )
+        return await loop.run_in_executor(None, lambda: _notify_linux(title, message, subtitle))
     else:
         # Fallback: just log it
         logger.info("Notification: %s — %s", title, message)
@@ -90,7 +88,7 @@ def _notify_linux(title: str, message: str, subtitle: str | None) -> bool:
         subprocess.run(
             [
                 "notify-send",
-                "--app-name=PromptPulse",
+                "--app-name=PromptShell",
                 "--expire-time=5000",
                 title,
                 body,
@@ -125,7 +123,7 @@ async def notify_enhanced_prompt(enhanced_prompt: str, preview_chars: int = 100)
 async def notify_error(error_message: str) -> bool:
     """Show an error notification."""
     return await show_notification(
-        title="PromptPulse",
+        title="PromptShell",
         subtitle="Error",
         message=error_message,
         sound=True,
@@ -135,7 +133,7 @@ async def notify_error(error_message: str) -> bool:
 async def notify_fallback(error_message: str) -> bool:
     """Notify the user that the LLM failed and a fallback was used."""
     return await show_notification(
-        title="PromptPulse",
+        title="PromptShell",
         subtitle="LLM unavailable — used template fallback",
         message=error_message,
         sound=True,
@@ -145,7 +143,7 @@ async def notify_fallback(error_message: str) -> bool:
 async def notify_listening() -> bool:
     """Show a notification that the service is listening."""
     return await show_notification(
-        title="PromptPulse",
+        title="PromptShell",
         message="Listening... speak now",
         sound=False,
     )
