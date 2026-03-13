@@ -205,9 +205,11 @@ Cost at demo/dev scale: **~$0/month** (Cloud Run free tier covers millions of re
 
 | Document | Description |
 |----------|-------------|
-| [SPEC.md](SPEC.md) | Full technical specification — problem statement, requirements, API design, data models, and implementation plan |
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture — ASCII diagrams, module layout, data flow, Cloud Run deployment, and extension points |
 | [AGENTS.md](AGENTS.md) | Development guide — prerequisites, build/test/lint commands, cross-platform notes, and contribution workflow |
+| [docs/spec.md](docs/spec.md) | Full technical specification — problem statement, requirements, API design, data models, and implementation plan |
+| [docs/architecture.md](docs/architecture.md) | System architecture — ASCII diagrams, module layout, data flow, Cloud Run deployment, and extension points |
+| [docs/article.md](docs/article.md) | Published article — "I Built a Voice-Activated Prompt Enhancer That Reads Your Terminal" |
+| [config.example.yaml](config.example.yaml) | Annotated configuration template with all available options |
 
 ## Development
 

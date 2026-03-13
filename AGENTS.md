@@ -1,5 +1,7 @@
 # PromptShell — Development Guide
 
+> This file is kept at the repository root so AI coding agents (GitHub Copilot Workspace, Cursor, etc.) can discover it automatically alongside `CLAUDE.md`. For architecture diagrams and the full technical spec, see [`docs/architecture.md`](docs/architecture.md) and [`docs/spec.md`](docs/spec.md).
+
 ## Prerequisites
 
 - **macOS or Linux**
@@ -21,15 +23,19 @@
 ```bash
 cd prompt-shell
 
-# Install dependencies
+# Install dependencies (faster-whisper and all core deps are included)
 uv sync
 
-# Initialize config directory
+# Initialize config directory (~/.prompt-shell/config.yaml)
 uv run prompt-shell init
 
-# Install the shell hook (for terminal state capture)
+# Install the shell hook for terminal state capture
+# Automatically appends a source line to ~/.zshrc, ~/.bashrc, or fish conf.d/
 uv run prompt-shell install-hook
-# Then restart your shell or: source ~/.prompt-shell/hook.zsh
+# Reload the current session without opening a new shell:
+# zsh:  source ~/.prompt-shell/hook.zsh
+# bash: source ~/.prompt-shell/hook.bash
+# fish: source ~/.config/fish/conf.d/prompt_shell.fish
 
 # Run a single enhancement (text mode, no voice/terminal needed)
 uv run prompt-shell enhance "fix the build error"
@@ -104,8 +110,9 @@ src/prompt_shell/
 │   ├── capture.py       # Microphone recording + energy-based VAD
 │   └── transcribe.py    # Whisper / Apple Speech / API backends
 ├── enhancer/
-│   ├── prompt_builder.py # Meta-prompt templates
-│   └── llm_client.py    # LiteLLM wrapper (Ollama/OpenAI/Anthropic)
+│   ├── enhancement_client.py # httpx async client → POST /enhance to Cloud Run
+│   ├── prompt_builder.py     # Fallback template-based prompt (when Cloud Run unreachable)
+│   └── llm_client.py         # litellm wrapper: Ollama/OpenAI/Anthropic (offline fallback)
 └── delivery/
     ├── clipboard.py     # Cross-platform: pbcopy / xclip / xsel / wl-copy
     ├── iterm_paste.py   # iTerm2 session paste (optional)
@@ -138,9 +145,9 @@ terminal:
 
 | Engine | Setup | Config |
 |--------|-------|--------|
-| **faster-whisper** (default) | `pip install faster-whisper` | `engine: whisper_local` |
-| **OpenAI Whisper API** | Set `OPENAI_API_KEY` | `engine: whisper_api` |
-| **Apple Speech** (macOS) | `pip install pyobjc-framework-Speech` | `engine: apple_speech` |
+| **faster-whisper** (default) | Included in base install — no extra setup | `engine: whisper_local` |
+| **OpenAI Whisper API** | Set `OPENAI_API_KEY` env var | `engine: whisper_api` |
+| **Apple Speech** (macOS only) | `pip install pyobjc-framework-Speech` (manual, not managed by uv) | `engine: apple_speech` |
 
 ## Platform-Specific Notes
 
@@ -176,9 +183,11 @@ terminal:
 | `prompt-shell enhance --voice` | Voice input mode |
 | `prompt-shell enhance --clipboard` | Enhance clipboard contents |
 | `prompt-shell context` | Show current terminal context |
-| `prompt-shell context --backend tmux` | Use specific backend |
-| `prompt-shell install-hook` | Install shell hook |
-| `prompt-shell init` | Create config directory |
+| `prompt-shell context -b tmux` | Use a specific backend (`-b` / `--backend`) |
+| `prompt-shell context -n 100` | Set screen buffer lines to capture (`-n` / `--lines`) |
+| `prompt-shell install-hook` | Install shell hook (auto-detects shell) |
+| `prompt-shell install-hook --shell bash` | Install for a specific shell |
+| `prompt-shell init` | Create config directory and default config |
 
 ## Google Cloud Run Deployment
 
