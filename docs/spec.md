@@ -213,7 +213,7 @@ OUTPUT: Write the enhanced prompt only. No explanation.
 **LLM**:
 | Provider | Model | SDK | Cost | Hosting |
 |----------|-------|-----|------|---------|
-| **Gemini** (default) | `gemini-2.0-flash` | `google-genai` | Free tier: 1,500 req/day | **Google Cloud Run** |
+| **Gemini** (default) | `gemini-2.5-flash-lite` | `google-genai` | Free tier: 1,500 req/day | **Google Cloud Run** |
 | Ollama (local fallback) | `llama3.2:8b` | `litellm` | Free | Local only |
 | OpenAI (optional) | `gpt-4o-mini` | `litellm` | ~$0.001/prompt | Cloud |
 | Anthropic (optional) | `claude-3.5-haiku` | `litellm` | ~$0.001/prompt | Cloud |
@@ -288,7 +288,7 @@ voice:
 # LLM (default: Gemini 2.0 Flash via Cloud Run)
 llm:
   provider: gemini             # gemini | ollama | openai | anthropic
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash-lite
   api_key: ${GEMINI_API_KEY}   # env var reference
   cloud_run_url: ${CLOUD_RUN_URL}  # URL of the deployed Cloud Run service
   temperature: 0.3

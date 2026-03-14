@@ -136,7 +136,7 @@ terminal:
 
 | Provider | Setup | Config |
 |----------|-------|--------|
-| **Gemini** (default) | Set `GEMINI_API_KEY` + deploy Cloud Run service (see below) | `provider: gemini`, `model: gemini-2.0-flash` |
+| **Gemini** (default) | Set `GEMINI_API_KEY` + deploy Cloud Run service (see below) | `provider: gemini`, `model: gemini-2.5-flash-lite` |
 | **Ollama** (offline fallback) | `brew install ollama && ollama pull llama3.2:8b` | `provider: ollama` |
 | **OpenAI** | Set `OPENAI_API_KEY` env var | `provider: openai`, `model: gpt-4o-mini` |
 | **Anthropic** | Set `ANTHROPIC_API_KEY` env var | `provider: anthropic`, `model: claude-3.5-haiku` |
@@ -256,7 +256,7 @@ curl -X POST $CLOUD_RUN_URL/enhance \
 ```yaml
 llm:
   provider: gemini
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash-lite
   api_key: ${GEMINI_API_KEY}
   cloud_run_url: ${CLOUD_RUN_URL}
 ```

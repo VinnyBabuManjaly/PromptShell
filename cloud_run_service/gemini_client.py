@@ -13,7 +13,7 @@ def create_client(api_key: str) -> genai.Client:
 def generate_enhanced_prompt(
     client: genai.Client,
     meta_prompt: str,
-    model: str = "gemini-2.0-flash",
+    model: str = "gemini-2.5-flash-lite",
 ) -> str:
     """Call Gemini to produce an enhanced developer prompt."""
     response = client.models.generate_content(

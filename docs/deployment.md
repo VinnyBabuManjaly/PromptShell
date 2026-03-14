@@ -288,7 +288,7 @@ Add the service URL to `~/.prompt-shell/config.yaml`:
 ```yaml
 llm:
   provider: gemini
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash-lite
   api_key: ${GEMINI_API_KEY}
   cloud_run_url: ${CLOUD_RUN_URL}
 ```

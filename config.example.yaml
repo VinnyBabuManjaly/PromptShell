@@ -17,7 +17,7 @@ voice:
 # Fallback: ollama (local, offline) if cloud_run_url is not set or service is unreachable
 llm:
   provider: gemini             # gemini | ollama | openai | anthropic
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash-lite
   api_key: ${GEMINI_API_KEY}   # Google AI Studio key — https://aistudio.google.com/
   cloud_run_url: ${CLOUD_RUN_URL}  # URL of deployed Cloud Run service
   temperature: 0.3

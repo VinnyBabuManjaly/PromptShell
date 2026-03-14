@@ -87,7 +87,7 @@ def test_gemini_provider_accepted():
 
     config = LLMConfig(
         provider="gemini",
-        model="gemini-2.0-flash",
+        model="gemini-2.5-flash-lite",
         cloud_run_url="https://prompt-shell-abc123-uc.a.run.app",
     )
     assert config.provider == "gemini"
@@ -99,7 +99,7 @@ def test_cloud_run_url_env_var_resolution(monkeypatch):
 
     monkeypatch.setenv("CLOUD_RUN_URL", "https://my-service-xyz.a.run.app")
     config = LLMConfig(
-        provider="gemini", model="gemini-2.0-flash", cloud_run_url="${CLOUD_RUN_URL}"
+        provider="gemini", model="gemini-2.5-flash-lite", cloud_run_url="${CLOUD_RUN_URL}"
     )
     assert config.resolve_cloud_run_url() == "https://my-service-xyz.a.run.app"
 

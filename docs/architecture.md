@@ -217,7 +217,7 @@ The local client serializes `ContextPayload` as JSON and sends it via HTTP POST 
 │  │  │  Google GenAI SDK                             │    │
 │  │  │                                               │    │
 │  │  │  client = genai.Client(api_key=GEMINI_API_KEY)│    │
-│  │  │  model  = "gemini-2.0-flash"                  │    │
+│  │  │  model  = "gemini-2.5-flash-lite"                  │    │
 │  │  │  response = client.models.generate_content()  │    │
 │  │  └──────────────┬────────────────────────────────┘    │
 │  │                 │                                      │
