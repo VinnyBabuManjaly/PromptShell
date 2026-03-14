@@ -73,7 +73,8 @@ def _notify_macos(title: str, message: str, subtitle: str | None, sound: bool) -
         subprocess.run(
             [
                 "osascript",
-                "-e", _MACOS_NOTIFY_SCRIPT,
+                "-e",
+                _MACOS_NOTIFY_SCRIPT,
                 title,
                 message,
                 subtitle or "",
