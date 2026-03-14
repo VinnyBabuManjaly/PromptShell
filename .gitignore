@@ -33,5 +33,5 @@ coverage.xml
 # Audio debug files
 *.wav
 
-# Internal docs (planning/notes)
+# Internal documentation (exclude from version control)
 docs/internal/
