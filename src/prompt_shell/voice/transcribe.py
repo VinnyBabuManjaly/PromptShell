@@ -81,12 +81,15 @@ class WhisperLocalEngine(TranscriptionEngine):
             tmp_path = f.name
 
         try:
-            # Inference is CPU-bound and synchronous — run in executor to avoid blocking the loop.
-            def _infer() -> tuple:
-                return self._model.transcribe(tmp_path, beam_size=5, language="en", vad_filter=True)
+            # Inference is CPU-bound — run in executor and fully consume the lazy generator there
+            # to avoid blocking the event loop.
+            def _infer() -> tuple[str, object]:
+                segments, info = self._model.transcribe(
+                    tmp_path, beam_size=5, language="en", vad_filter=True
+                )
+                return " ".join(seg.text for seg in segments).strip(), info
 
-            segments, info = await loop.run_in_executor(None, _infer)
-            text = " ".join(seg.text for seg in segments).strip()
+            text, info = await loop.run_in_executor(None, _infer)
             return TranscriptionResult(
                 text=text,
                 language=info.language,
