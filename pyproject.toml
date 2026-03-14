@@ -59,6 +59,8 @@ select = ["E", "F", "I", "N", "W", "UP"]
 "src/prompt_shell/terminal/error_patterns.py" = ["E501"]
 # Test strings contain long error messages
 "tests/test_error_patterns.py" = ["E501"]
+# AppleScript strings embedded as literals contain long lines
+"src/prompt_shell/delivery/notification.py" = ["E501"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
