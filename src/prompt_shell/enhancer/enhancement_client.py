@@ -38,6 +38,7 @@ async def enhance_via_cloud_run(
         "screen_buffer_last_50": summary.get("screen_buffer_last_50", ""),
         "project_type": summary.get("project_type", "unknown"),
         "project_name": summary.get("project_name", "unknown"),
+        "screenshot_b64": summary.get("screenshot_b64"),
     }
 
     url = cloud_run_url.rstrip("/") + "/enhance"
@@ -63,4 +64,9 @@ async def enhance_with_fallback(
             logger.warning("Cloud Run failed: %s — falling back to litellm", e)
 
     meta_prompt = build_meta_prompt(summary)
-    return await enhance_prompt(meta_prompt, config, fallback_text=fallback_text)
+    return await enhance_prompt(
+        meta_prompt,
+        config,
+        fallback_text=fallback_text,
+        screenshot_b64=summary.get("screenshot_b64"),
+    )

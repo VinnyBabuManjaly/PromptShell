@@ -62,6 +62,23 @@ class TestEnhanceViaCloudRun:
         assert body["cwd"] == "/app"
         assert body["git_branch"] == "main"
 
+    async def test_sends_screenshot_b64_in_payload(self, httpx_mock):
+        httpx_mock.add_response(json={"enhanced_prompt": "ok"})
+        summary_with_screenshot = {**_SUMMARY, "screenshot_b64": "abc123"}
+        await enhance_via_cloud_run(summary_with_screenshot, _CLOUD_RUN_URL)
+        import json
+
+        body = json.loads(httpx_mock.get_requests()[0].content)
+        assert body["screenshot_b64"] == "abc123"
+
+    async def test_sends_null_screenshot_b64_when_absent(self, httpx_mock):
+        httpx_mock.add_response(json={"enhanced_prompt": "ok"})
+        await enhance_via_cloud_run(_SUMMARY, _CLOUD_RUN_URL)
+        import json
+
+        body = json.loads(httpx_mock.get_requests()[0].content)
+        assert body["screenshot_b64"] is None
+
 
 # ---------------------------------------------------------------------------
 # enhance_with_fallback

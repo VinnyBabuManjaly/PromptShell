@@ -87,8 +87,12 @@ class LLMClient:
             return f"gemini/{model}"
         return model
 
-    async def complete(self, prompt: str) -> str:
+    async def complete(self, prompt: str, screenshot_b64: str | None = None) -> str:
         """Send a prompt to the LLM and return the response text.
+
+        When *screenshot_b64* is provided the user message is sent as a
+        multimodal content list (text + inline image) using litellm's
+        ``image_url`` format, enabling vision models to see the terminal.
 
         Retries up to *max_retries* times on transient errors before
         raising.  Permanent errors (auth, invalid model) raise
@@ -98,6 +102,18 @@ class LLMClient:
 
         api_key = self._config.resolve_api_key()
         last_exc: Exception | None = None
+
+        if screenshot_b64:
+            user_content: str | list = [
+                {"type": "text", "text": prompt},
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{screenshot_b64}"},
+                },
+            ]
+            logger.debug("Sending multimodal request (text + screenshot) to LLM")
+        else:
+            user_content = prompt
 
         for attempt in range(1 + self._max_retries):
             try:
@@ -127,7 +143,7 @@ class LLMClient:
                                 "Output only the enhanced prompt."
                             ),
                         },
-                        {"role": "user", "content": prompt},
+                        {"role": "user", "content": user_content},
                     ],
                     temperature=self._config.temperature,
                     max_tokens=self._config.max_tokens,
@@ -177,8 +193,12 @@ async def enhance_prompt(
     meta_prompt: str,
     config: LLMConfig,
     fallback_text: str | None = None,
+    screenshot_b64: str | None = None,
 ) -> EnhanceResult:
     """High-level function: send meta-prompt to LLM.
+
+    Pass *screenshot_b64* to include a terminal screenshot in the request
+    for models that support vision (e.g. Gemini, GPT-4o).
 
     Returns an ``EnhanceResult`` with ``used_fallback=True`` and the
     error message when the LLM fails and a fallback is available.
@@ -187,7 +207,7 @@ async def enhance_prompt(
     client = LLMClient(config)
 
     try:
-        text = await client.complete(meta_prompt)
+        text = await client.complete(meta_prompt, screenshot_b64=screenshot_b64)
         return EnhanceResult(text=text)
     except Exception as e:
         error_msg = str(e)

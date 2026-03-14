@@ -204,6 +204,53 @@ class TestEnhancePrompt:
 
 
 # ---------------------------------------------------------------------------
+# LLMClient.complete — multimodal (screenshot) support
+# ---------------------------------------------------------------------------
+
+
+class TestLLMClientMultimodal:
+    async def test_sends_text_only_when_no_screenshot(self):
+        config = _make_config()
+        client = LLMClient(config, max_retries=0, retry_delay=0)
+
+        with patch("litellm.acompletion", new_callable=AsyncMock) as mock:
+            mock.return_value = _mock_response("enhanced")
+            await client.complete("my prompt", screenshot_b64=None)
+
+        messages = mock.call_args.kwargs["messages"]
+        user_content = messages[1]["content"]
+        assert user_content == "my prompt"
+
+    async def test_sends_multimodal_content_when_screenshot_provided(self):
+        config = _make_config()
+        client = LLMClient(config, max_retries=0, retry_delay=0)
+
+        with patch("litellm.acompletion", new_callable=AsyncMock) as mock:
+            mock.return_value = _mock_response("enhanced")
+            await client.complete("my prompt", screenshot_b64="abc123")
+
+        messages = mock.call_args.kwargs["messages"]
+        user_content = messages[1]["content"]
+        assert isinstance(user_content, list)
+        assert user_content[0] == {"type": "text", "text": "my prompt"}
+        assert user_content[1]["type"] == "image_url"
+        assert "abc123" in user_content[1]["image_url"]["url"]
+
+    async def test_enhance_prompt_passes_screenshot_to_complete(self):
+        config = _make_config()
+
+        with patch("litellm.acompletion", new_callable=AsyncMock) as mock:
+            mock.return_value = _mock_response("enhanced")
+            await enhance_prompt("meta", config, screenshot_b64="imgdata")
+
+        messages = mock.call_args.kwargs["messages"]
+        user_content = messages[1]["content"]
+        assert isinstance(user_content, list)
+        assert user_content[0]["type"] == "text"
+        assert user_content[1]["type"] == "image_url"
+
+
+# ---------------------------------------------------------------------------
 # LLMClient._resolve_model_name — provider prefix mapping
 # ---------------------------------------------------------------------------
 
