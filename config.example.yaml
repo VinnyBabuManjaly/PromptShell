@@ -3,6 +3,7 @@ terminal:
   backend: auto                # auto | shell_hook | tmux | iterm2 | generic
   screen_buffer_lines: 100
   poll_interval_ms: 2000
+  capture_screenshot: true     # capture a PNG screenshot on each hotkey trigger (requires grim/scrot/screencapture)
 
 # Voice
 voice:

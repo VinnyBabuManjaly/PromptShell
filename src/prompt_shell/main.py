@@ -44,7 +44,6 @@ async def run_pipeline(
     from prompt_shell.delivery.notification import (
         notify_enhanced_prompt,
         notify_error,
-        notify_fallback,
         notify_listening,
     )
     from prompt_shell.enhancer.enhancement_client import enhance_with_fallback
@@ -56,7 +55,7 @@ async def run_pipeline(
 
     logger = logging.getLogger(__name__)
 
-    # --- Step 1: Terminal context ---
+    # --- Step 1: Terminal context + screenshot (concurrent) ---
     terminal_state = TerminalState()
     try:
         backend = create_backend(
@@ -67,6 +66,13 @@ async def run_pipeline(
         terminal_state = await backend.snapshot()
     except Exception as e:
         logger.warning("Terminal context capture failed: %s (continuing without it)", e)
+
+    # Launch screenshot capture concurrently — it completes while voice is recording.
+    screenshot_task: asyncio.Task[str | None] | None = None
+    if config.terminal.capture_screenshot:
+        from prompt_shell.terminal.screenshot import capture_screenshot_b64
+
+        screenshot_task = asyncio.create_task(capture_screenshot_b64())
 
     # --- Step 2: Voice / clipboard input ---
     # When transcript is pre-supplied (e.g., direct text from CLI), skip capture.
@@ -106,23 +112,36 @@ async def run_pipeline(
         console.print(f"[green]Clipboard:[/] {transcript[:80]}...")
 
     # --- Step 3: Build context ---
+    screenshot_b64: str | None = None
+    if screenshot_task is not None:
+        try:
+            screenshot_b64 = await screenshot_task
+            if screenshot_b64:
+                logger.debug("Screenshot captured (%d b64 chars)", len(screenshot_b64))
+        except Exception as e:
+            logger.warning("Screenshot capture failed: %s (continuing without it)", e)
+
     builder = ContextBuilder()
-    context = builder.build(terminal_state, voice_transcript=transcript)
+    context = builder.build(
+        terminal_state, voice_transcript=transcript, screenshot_b64=screenshot_b64
+    )
     summary = builder.build_summary(context)
 
     # --- Step 4: Enhance via LLM ---
     console.print("[dim]Enhancing prompt...[/]")
     fallback = build_fallback_prompt(summary)
 
+    used_fallback = False
     try:
         result = await enhance_with_fallback(summary, config.llm, fallback_text=fallback)
         enhanced = result.text
-        if result.used_fallback:
+        used_fallback = result.used_fallback
+        if used_fallback:
             console.print(f"[yellow]LLM unavailable ({result.error}), using template fallback.[/]")
-            await notify_fallback(result.error or "unknown error")
     except Exception:
         logger.warning("LLM unavailable, using template fallback")
         enhanced = fallback
+        used_fallback = True
 
     # --- Step 5: Deliver ---
     console.print(Panel(enhanced, title="Enhanced Prompt", border_style="green"))
@@ -136,7 +155,9 @@ async def run_pipeline(
 
     if config.delivery.show_notification:
         await notify_enhanced_prompt(
-            enhanced, preview_chars=config.delivery.notification_preview_chars
+            enhanced,
+            preview_chars=config.delivery.notification_preview_chars,
+            used_fallback=used_fallback,
         )
 
     return enhanced
