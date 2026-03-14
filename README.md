@@ -110,19 +110,46 @@ info (type, code, file, line, message) for 12+ pattern families:
 
 | Hotkey | Action |
 |--------|--------|
-| `Ctrl+Shift+P` | Voice capture, enhance, deliver |
-| `Ctrl+Shift+L` | Enhance last clipboard text with terminal context (no voice) |
-| `Ctrl+Shift+R` | Re-enhance last prompt with updated terminal context |
+| `Ctrl+Alt+E` | Voice capture, enhance, deliver |
+| `Ctrl+Alt+L` | Enhance last clipboard text with terminal context (no voice) |
+| `Ctrl+Alt+R` | Re-enhance last prompt with updated terminal context |
 | `Esc` | Cancel ongoing voice capture |
+
+> **Note:** Default hotkeys avoid common system shortcuts. Customize them in `~/.prompt-shell/config.yaml` under the `hotkeys:` key. Avoid `Ctrl+Shift+E` (reserved by GNOME/GTK for Unicode input).
 
 ### CLI
 
 ```
-prompt-shell start          # Start the daemon with global hotkeys
-prompt-shell enhance "..."  # One-shot: enhance a text prompt
-prompt-shell context        # Show current terminal context
-prompt-shell install-hook   # Install shell hook (zsh/bash/fish)
-prompt-shell init           # Generate default config
+prompt-shell start             # Start the daemon with global hotkeys
+prompt-shell enhance "..."     # One-shot: enhance a text prompt
+prompt-shell context           # Show current terminal context
+prompt-shell install-hook      # Install shell hook (zsh/bash/fish)
+prompt-shell install-service   # Install as a systemd user service (Linux)
+prompt-shell init              # Generate default config
+```
+
+### Running as a Service (Linux)
+
+Install PromptShell as a systemd user service so it starts automatically on login:
+
+```bash
+prompt-shell install-service
+```
+
+Add your API key to the env file created at `~/.prompt-shell/env`:
+
+```bash
+echo "GEMINI_API_KEY=your_key_here" >> ~/.prompt-shell/env
+```
+
+Manage the service:
+
+```bash
+systemctl --user status prompt-shell    # Check status
+systemctl --user restart prompt-shell   # Restart
+systemctl --user stop prompt-shell      # Stop
+systemctl --user disable prompt-shell   # Disable autostart
+journalctl --user -u prompt-shell -f    # Follow logs
 ```
 
 ### Security

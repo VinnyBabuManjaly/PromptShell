@@ -366,6 +366,81 @@ def install_hook(
 
 
 @app.command()
+def install_service(
+    enable: bool = typer.Option(True, "--enable/--no-enable", help="Enable and start the service."),
+):
+    """Install PromptShell as a systemd user service.
+
+    Creates ~/.config/systemd/user/prompt-shell.service and optionally
+    enables + starts it so it runs automatically on login.
+
+    API keys and environment variables are read from ~/.prompt-shell/env
+    (create this file if it doesn't exist).
+    """
+    import shutil
+    import subprocess
+
+    binary = shutil.which("prompt-shell")
+    if not binary:
+        console.print(
+            "[red]prompt-shell binary not found in PATH.[/] "
+            "Install with: uv tool install prompt-shell"
+        )
+        raise typer.Exit(1)
+
+    service_dir = Path.home() / ".config" / "systemd" / "user"
+    service_dir.mkdir(parents=True, exist_ok=True)
+    service_file = service_dir / "prompt-shell.service"
+
+    env_file = Path.home() / ".prompt-shell" / "env"
+    if not env_file.exists():
+        env_file.parent.mkdir(parents=True, exist_ok=True)
+        env_file.write_text(
+            "# PromptShell environment variables\n"
+            "# Add your API keys here — one per line, KEY=value format.\n"
+            "# Example:\n"
+            "# GEMINI_API_KEY=your_key_here\n"
+        )
+        console.print(f"[green]Created env file:[/] {env_file}")
+        console.print("[yellow]Add your GEMINI_API_KEY to that file before starting.[/]")
+
+    unit = f"""\
+[Unit]
+Description=PromptShell — voice-activated terminal prompt enhancer
+Documentation=https://github.com/VinnyBabuManjaly/PromptShell
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart={binary} start
+Restart=on-failure
+RestartSec=5s
+EnvironmentFile=-{env_file}
+
+[Install]
+WantedBy=graphical-session.target
+"""
+
+    service_file.write_text(unit)
+    console.print(f"[green]Service file written:[/] {service_file}")
+
+    if enable:
+        try:
+            subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+            subprocess.run(["systemctl", "--user", "enable", "--now", "prompt-shell"], check=True)
+            console.print("[green]Service enabled and started.[/]")
+            console.print("[dim]Check status with:[/] systemctl --user status prompt-shell")
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]systemctl failed:[/] {e}")
+            console.print("[dim]Start manually with:[/] systemctl --user start prompt-shell")
+    else:
+        console.print("[dim]Enable manually with:[/]")
+        console.print("  systemctl --user daemon-reload")
+        console.print("  systemctl --user enable --now prompt-shell")
+
+
+@app.command()
 def init():
     """Initialize configuration directory (~/.prompt-shell/)."""
     config_dir = init_config_dir()
