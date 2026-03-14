@@ -54,7 +54,7 @@ class LLMConfig(BaseModel):
 
 
 class DeliveryConfig(BaseModel):
-    method: Literal["clipboard", "iterm_paste", "api", "file"] = "clipboard"
+    method: Literal["clipboard", "iterm_paste", "file"] = "clipboard"
     show_notification: bool = True
     notification_preview_chars: int = Field(default=100, ge=20, le=500)
     output_file: Path = Field(
