@@ -101,10 +101,27 @@ info (type, code, file, line, message) for 12+ pattern families:
 
 ### Delivery
 
-- **Clipboard** — `pbcopy` (macOS), `xclip` / `xsel` / `wl-copy` (Linux)
-- **Terminal paste** — iTerm2 `send_text()`, tmux `send-keys`
-- **File pipe** — writes to `~/.prompt-shell/last-prompt.txt`
-- **Notification** — `osascript` (macOS), `notify-send` (Linux)
+| Method | Description |
+|--------|-------------|
+| `clipboard` | Copies to system clipboard — `pbcopy` (macOS), `xclip` / `wl-copy` (Linux). Default. |
+| `iterm_paste` | Pastes directly into the active iTerm2 session (macOS only). |
+| `file` | Writes the prompt to a local file. Useful in SSH/headless environments where clipboard is unavailable. |
+
+**File delivery** writes to `~/.prompt-shell/last_prompt.txt` by default. Configure a custom path:
+
+```yaml
+delivery:
+  method: file
+  output_file: ~/.prompt-shell/last_prompt.txt  # default
+```
+
+Read the output from another terminal or script:
+
+```bash
+cat ~/.prompt-shell/last_prompt.txt
+# pipe it directly into your editor, aichat, llm CLI, etc.
+cat ~/.prompt-shell/last_prompt.txt | aichat
+```
 
 ### Global Hotkeys
 
@@ -197,7 +214,7 @@ llm:
   cloud_run_url: ${CLOUD_RUN_URL}           # URL of the deployed Cloud Run service
 
 delivery:
-  method: clipboard      # clipboard | iterm_paste | api | file
+  method: clipboard      # clipboard | iterm_paste | file
   show_notification: true
 ```
 

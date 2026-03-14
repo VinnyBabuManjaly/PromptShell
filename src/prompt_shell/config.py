@@ -57,6 +57,9 @@ class DeliveryConfig(BaseModel):
     method: Literal["clipboard", "iterm_paste", "api", "file"] = "clipboard"
     show_notification: bool = True
     notification_preview_chars: int = Field(default=100, ge=20, le=500)
+    output_file: Path = Field(
+        default_factory=lambda: Path.home() / ".prompt-shell" / "last_prompt.txt"
+    )
 
 
 class HotkeyConfig(BaseModel):

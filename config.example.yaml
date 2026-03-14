@@ -40,9 +40,10 @@ llm:
 
 # Delivery
 delivery:
-  method: clipboard            # clipboard | iterm_paste | api | file
+  method: clipboard            # clipboard | iterm_paste | file
   show_notification: true
   notification_preview_chars: 100
+  # output_file: ~/.prompt-shell/last_prompt.txt  # used when method: file
 
 # Hotkeys
 hotkeys:

@@ -129,6 +129,10 @@ async def run_pipeline(
 
     if config.delivery.method == "clipboard":
         await deliver_to_clipboard(enhanced)
+    elif config.delivery.method == "file":
+        from prompt_shell.delivery.file import deliver_to_file
+
+        await deliver_to_file(enhanced, config.delivery.output_file)
 
     if config.delivery.show_notification:
         await notify_enhanced_prompt(
