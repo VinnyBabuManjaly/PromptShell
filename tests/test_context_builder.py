@@ -42,3 +42,29 @@ def test_empty_context():
     summary = builder.build_summary(ctx)
     assert summary["cwd"] == ""
     assert summary["detected_errors"] == "none detected"
+
+
+def test_build_includes_screenshot_b64_when_provided():
+    builder = ContextBuilder()
+    ctx = builder.build(TerminalState(), screenshot_b64="abc123")
+    assert ctx.screenshot_b64 == "abc123"
+
+
+def test_build_screenshot_b64_defaults_to_none():
+    builder = ContextBuilder()
+    ctx = builder.build(TerminalState())
+    assert ctx.screenshot_b64 is None
+
+
+def test_build_summary_includes_screenshot_b64():
+    builder = ContextBuilder()
+    ctx = builder.build(TerminalState(), screenshot_b64="abc123")
+    summary = builder.build_summary(ctx)
+    assert summary["screenshot_b64"] == "abc123"
+
+
+def test_build_summary_screenshot_b64_is_none_when_absent():
+    builder = ContextBuilder()
+    ctx = builder.build(TerminalState())
+    summary = builder.build_summary(ctx)
+    assert summary["screenshot_b64"] is None
