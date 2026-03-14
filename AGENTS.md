@@ -191,9 +191,31 @@ terminal:
 
 ## Google Cloud Run Deployment
 
-The enhancement service runs on Cloud Run using Gemini 2.0 Flash via the Google GenAI SDK. Deploy it once; the local daemon calls it on every hotkey trigger.
+The Cloud Run service is deployed automatically as part of the versioned release
+pipeline — **not** on every push to main. This keeps the deployed service version
+in sync with the published PyPI package.
 
-### One-command deploy
+**Full setup and step-by-step instructions: [`docs/deployment.md`](docs/deployment.md)**
+
+### Release-based deploy (normal path)
+
+```bash
+# 1. Update version in pyproject.toml, commit it
+git commit -m "chore: bump version to 0.2.0"
+
+# 2. Push a version tag — this triggers the full pipeline
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Pipeline order: `validate → test → build → publish-pypi → deploy-cloud-run`
+
+Cloud Run deploys only after PyPI publish succeeds. The container image is
+tagged with the release version for traceability and rollback.
+
+### First-time / local deploy
+
+Use `deploy.sh` for initial setup before your first tagged release:
 
 ```bash
 export PROJECT_ID=your-gcp-project-id
@@ -201,45 +223,35 @@ export GEMINI_API_KEY=your-gemini-api-key
 bash deploy.sh
 ```
 
-`deploy.sh` handles enabling APIs, building the image via Cloud Build, deploying to Cloud Run, and printing the service URL.
+### Manual re-deploy (no new release)
 
-### Manual steps
+For secret rotation or incident recovery without bumping the version:
+
+**GitHub Actions → Deploy to Cloud Run (Manual) → Run workflow**
+
+### Required GitHub secrets
+
+Set these in **Settings → Secrets and variables → Actions** before the first
+release:
+
+| Secret | Description |
+|--------|-------------|
+| `GCP_PROJECT_ID` | GCP project ID |
+| `GCP_SA_KEY` | Service account JSON key, base64-encoded |
+| `GEMINI_API_KEY` | Google AI Studio API key |
+
+### Verify a deployment
 
 ```bash
-# Authenticate and set project
-gcloud auth login
-gcloud config set project $PROJECT_ID
+curl $CLOUD_RUN_URL/health
+# {"status":"ok"}
 
-# Enable required APIs
-gcloud services enable \
-  run.googleapis.com \
-  cloudbuild.googleapis.com \
-  containerregistry.googleapis.com
-
-# Build image
-gcloud builds submit \
-  --tag gcr.io/$PROJECT_ID/prompt-shell-enhancer \
-  ./cloud_run_service/
-
-# Deploy
-gcloud run deploy prompt-shell-enhancer \
-  --image gcr.io/$PROJECT_ID/prompt-shell-enhancer \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
-  --memory 512Mi \
-  --cpu 1 \
-  --min-instances 0 \
-  --max-instances 10 \
-  --timeout 30s
-
-# Get service URL
-export CLOUD_RUN_URL=$(gcloud run services describe prompt-shell-enhancer \
-  --region us-central1 --format 'value(status.url)')
+curl -X POST $CLOUD_RUN_URL/enhance \
+  -H "Content-Type: application/json" \
+  -d '{"voice_transcript": "fix the error", "cwd": "/app"}'
 ```
 
-Update `~/.prompt-shell/config.yaml`:
+### Local config after deploy
 
 ```yaml
 llm:
@@ -247,44 +259,6 @@ llm:
   model: gemini-2.0-flash
   api_key: ${GEMINI_API_KEY}
   cloud_run_url: ${CLOUD_RUN_URL}
-```
-
-### Verify the deployment
-
-```bash
-# Health check
-curl $CLOUD_RUN_URL/health
-# {"status":"ok"}
-
-# Test enhancement
-curl -X POST $CLOUD_RUN_URL/enhance \
-  -H "Content-Type: application/json" \
-  -d '{"voice_transcript": "fix the error", "cwd": "/app"}'
-```
-
-### CI/CD (automated deploys)
-
-Two options are provided in the repo:
-
-| File | Trigger | How to use |
-|------|---------|------------|
-| `.github/workflows/deploy-cloud-run.yml` | Push to `main` touching `cloud_run_service/` | Add secrets `GCP_PROJECT_ID`, `GCP_SA_KEY`, `GEMINI_API_KEY` to GitHub repo settings |
-| `cloudbuild.yaml` | Cloud Build trigger | Create a trigger in GCP Console pointing at this file; store API key in Secret Manager as `gemini-api-key` |
-
-### Secret Manager setup (for `cloudbuild.yaml`)
-
-```bash
-# Store Gemini API key in Secret Manager
-echo -n "$GEMINI_API_KEY" | gcloud secrets create gemini-api-key \
-  --data-file=- \
-  --project "$PROJECT_ID"
-
-# Grant Cloud Build access to the secret
-gcloud secrets add-iam-policy-binding gemini-api-key \
-  --member="serviceAccount:$(gcloud projects describe $PROJECT_ID \
-    --format='value(projectNumber)')@cloudbuild.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor" \
-  --project "$PROJECT_ID"
 ```
 
 ---

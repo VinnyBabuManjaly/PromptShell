@@ -86,6 +86,38 @@ Runtime config is loaded from `~/.prompt-shell/config.yaml` (or `XDG_CONFIG_HOME
 Default stack: Gemini 2.0 Flash on Cloud Run, faster-whisper base.en (local), clipboard delivery.
 Offline fallback: Ollama + llama3.2:8b (local).
 
+### Deployment
+
+Cloud Run is deployed as part of the versioned release pipeline — **not** on every push to main.
+
+**Normal path:** push a version tag → `release.yml` runs tests → publishes to PyPI → deploys Cloud Run → creates GitHub Release.
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+**Manual re-deploy** (secret rotation, hotfix without a new version):
+GitHub Actions → "Deploy to Cloud Run (Manual)" → Run workflow.
+
+**Local deploy** (first-time setup or debugging):
+```bash
+export PROJECT_ID=... GEMINI_API_KEY=... && bash deploy.sh
+```
+
+**Required GitHub repository secrets** (Settings → Secrets → Actions):
+- `GCP_PROJECT_ID` — GCP project ID
+- `GCP_SA_KEY` — service account JSON key, base64-encoded
+- `GEMINI_API_KEY` — Google AI Studio API key
+
+Full setup instructions: [`docs/deployment.md`](docs/deployment.md).
+
+**Relevant files:**
+- `deploy.sh` — one-command local deploy script
+- `cloudbuild.yaml` — Cloud Build trigger config (reads API key from Secret Manager)
+- `.github/workflows/release.yml` — full release pipeline including `deploy-cloud-run` job
+- `.github/workflows/deploy-cloud-run.yml` — manual re-deploy workflow
+- `cloud_run_service/` — FastAPI service code, Dockerfile, requirements
+
 ---
 
 ## Coding Standards & Best Practices
