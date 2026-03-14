@@ -209,7 +209,7 @@ voice:
 
 llm:
   provider: gemini                          # gemini | ollama | openai | anthropic
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash-lite
   api_key: ${GEMINI_API_KEY}
   cloud_run_url: ${CLOUD_RUN_URL}           # URL of the deployed Cloud Run service
 
@@ -220,36 +220,113 @@ delivery:
 
 ## Google Cloud Deployment
 
-The enhancement service runs on Cloud Run. Deploy it once; the local client calls it on every hotkey trigger.
+The enhancement service runs on Cloud Run using **Gemini 2.0 Flash** via the **Google GenAI SDK**. It is deployed automatically as part of every versioned release.
+
+### How deployment works
+
+Pushing a version tag triggers the full release pipeline in one shot:
 
 ```bash
-# Set your project and API key
-export PROJECT_ID=your-gcp-project-id
-export GEMINI_API_KEY=your-gemini-api-key
+# 1. Update version in pyproject.toml, then commit
+git commit -m "chore: bump version to 0.2.0"
 
-# Build and deploy
-gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-shell-enhancer ./cloud_run_service/
-gcloud run deploy prompt-shell-enhancer \
-  --image gcr.io/$PROJECT_ID/prompt-shell-enhancer \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
-  --memory 512Mi \
-  --min-instances 0
-
-# Copy the service URL into your config
-export CLOUD_RUN_URL=$(gcloud run services describe prompt-shell-enhancer \
-  --region us-central1 --format 'value(status.url)')
+# 2. Push the tag
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
-Cost at demo/dev scale: **~$0/month** (Cloud Run free tier covers millions of requests; Gemini 2.0 Flash free tier covers 1,500 req/day).
+The pipeline runs these jobs in order:
+
+```
+validate  →  test  →  build  →  publish-pypi  →  deploy-cloud-run
+                                                  github-release
+                                                  docker
+```
+
+Cloud Run deploys **after** PyPI publish succeeds — so a failed publish blocks the deploy, keeping the package and service version in sync. Each release tags the container image with the version (e.g. `gcr.io/.../prompt-shell-enhancer:v0.2.0`), making rollbacks straightforward.
+
+### Required GitHub secrets
+
+Before your first release, add these three secrets to your repository
+(**Settings → Secrets and variables → Actions**):
+
+| Secret | Value |
+|--------|-------|
+| `GCP_PROJECT_ID` | Your GCP project ID |
+| `GCP_SA_KEY` | Service account JSON key, base64-encoded |
+| `GEMINI_API_KEY` | Google AI Studio API key |
+
+See [docs/deployment.md](docs/deployment.md) for step-by-step instructions on
+creating the GCP project, enabling APIs, creating the service account, and
+encoding the key.
+
+### First-time / local deploy
+
+For initial setup or testing before your first tagged release:
+
+```bash
+export PROJECT_ID=your-gcp-project-id
+export GEMINI_API_KEY=your-gemini-api-key
+bash deploy.sh
+```
+
+`deploy.sh` enables required GCP APIs, builds the image via Cloud Build,
+deploys to Cloud Run, and prints the service URL.
+
+### Manual re-deploy (without a new release)
+
+To redeploy without bumping the version — e.g. to rotate `GEMINI_API_KEY`
+after a secret rotation — use the manual workflow:
+
+**GitHub Actions → Deploy to Cloud Run (Manual) → Run workflow**
+
+You can optionally specify the region and image tag to deploy.
+
+### Verify the deployment
+
+```bash
+curl $CLOUD_RUN_URL/health
+# {"status":"ok"}
+
+curl -X POST $CLOUD_RUN_URL/enhance \
+  -H "Content-Type: application/json" \
+  -d '{"voice_transcript": "fix the build error", "cwd": "/app"}'
+```
+
+### Local config
+
+Add the service URL to `~/.prompt-shell/config.yaml`:
+
+```yaml
+llm:
+  provider: gemini
+  model: gemini-2.5-flash-lite
+  api_key: ${GEMINI_API_KEY}
+  cloud_run_url: ${CLOUD_RUN_URL}
+```
+
+### Rollback
+
+Each release image is tagged with the version. To roll back:
+
+```bash
+gcloud run deploy prompt-shell-enhancer \
+  --image gcr.io/$PROJECT_ID/prompt-shell-enhancer:v0.1.0 \
+  --platform managed --region us-central1 --project $PROJECT_ID
+```
+
+### Cost
+
+**~$0/month** at demo/personal scale — Cloud Run scales to zero, free tier
+covers millions of requests/month. Gemini 2.0 Flash free tier covers 1,500
+requests/day. See [docs/deployment.md](docs/deployment.md) for a full cost breakdown.
 
 ## Documentation
 
 | Document | Description |
 |----------|-------------|
 | [AGENTS.md](AGENTS.md) | Development guide — prerequisites, build/test/lint commands, cross-platform notes, and contribution workflow |
+| [docs/deployment.md](docs/deployment.md) | End-to-end deployment guide — GCP setup, GitHub secrets, release pipeline, rollback, and cost breakdown |
 | [docs/spec.md](docs/spec.md) | Full technical specification — problem statement, requirements, API design, data models, and implementation plan |
 | [docs/architecture.md](docs/architecture.md) | System architecture — ASCII diagrams, module layout, data flow, Cloud Run deployment, and extension points |
 | [docs/article.md](docs/article.md) | Published article — "I Built a Voice-Activated Prompt Enhancer That Reads Your Terminal" |

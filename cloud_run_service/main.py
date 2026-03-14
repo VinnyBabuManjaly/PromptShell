@@ -40,7 +40,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash-lite")
 
 
 class EnhanceRequest(BaseModel):

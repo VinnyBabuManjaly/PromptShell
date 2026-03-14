@@ -136,7 +136,7 @@ terminal:
 
 | Provider | Setup | Config |
 |----------|-------|--------|
-| **Gemini** (default) | Set `GEMINI_API_KEY` + deploy Cloud Run service (see below) | `provider: gemini`, `model: gemini-2.0-flash` |
+| **Gemini** (default) | Set `GEMINI_API_KEY` + deploy Cloud Run service (see below) | `provider: gemini`, `model: gemini-2.5-flash-lite` |
 | **Ollama** (offline fallback) | `brew install ollama && ollama pull llama3.2:8b` | `provider: ollama` |
 | **OpenAI** | Set `OPENAI_API_KEY` env var | `provider: openai`, `model: gpt-4o-mini` |
 | **Anthropic** | Set `ANTHROPIC_API_KEY` env var | `provider: anthropic`, `model: claude-3.5-haiku` |
@@ -191,49 +191,74 @@ terminal:
 
 ## Google Cloud Run Deployment
 
-The enhancement service runs on Cloud Run. Deploy it once; the local daemon calls it on every hotkey trigger.
+The Cloud Run service is deployed automatically as part of the versioned release
+pipeline — **not** on every push to main. This keeps the deployed service version
+in sync with the published PyPI package.
+
+**Full setup and step-by-step instructions: [`docs/deployment.md`](docs/deployment.md)**
+
+### Release-based deploy (normal path)
 
 ```bash
-# Authenticate and set project
-gcloud auth login
-gcloud config set project YOUR_PROJECT_ID
+# 1. Update version in pyproject.toml, commit it
+git commit -m "chore: bump version to 0.2.0"
 
-# Enable required APIs
-gcloud services enable run.googleapis.com containerregistry.googleapis.com
-
-# Build and deploy the Cloud Run service
-gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-shell-enhancer ./cloud_run_service/
-
-gcloud run deploy prompt-shell-enhancer \
-  --image gcr.io/$PROJECT_ID/prompt-shell-enhancer \
-  --platform managed \
-  --region us-central1 \
-  --allow-unauthenticated \
-  --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
-  --memory 512Mi \
-  --min-instances 0 \
-  --max-instances 10
-
-# Get service URL and add to local config
-export CLOUD_RUN_URL=$(gcloud run services describe prompt-shell-enhancer \
-  --region us-central1 --format 'value(status.url)')
+# 2. Push a version tag — this triggers the full pipeline
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
-Update `~/.prompt-shell/config.yaml`:
+Pipeline order: `validate → test → build → publish-pypi → deploy-cloud-run`
+
+Cloud Run deploys only after PyPI publish succeeds. The container image is
+tagged with the release version for traceability and rollback.
+
+### First-time / local deploy
+
+Use `deploy.sh` for initial setup before your first tagged release:
+
+```bash
+export PROJECT_ID=your-gcp-project-id
+export GEMINI_API_KEY=your-gemini-api-key
+bash deploy.sh
+```
+
+### Manual re-deploy (no new release)
+
+For secret rotation or incident recovery without bumping the version:
+
+**GitHub Actions → Deploy to Cloud Run (Manual) → Run workflow**
+
+### Required GitHub secrets
+
+Set these in **Settings → Secrets and variables → Actions** before the first
+release:
+
+| Secret | Description |
+|--------|-------------|
+| `GCP_PROJECT_ID` | GCP project ID |
+| `GCP_SA_KEY` | Service account JSON key, base64-encoded |
+| `GEMINI_API_KEY` | Google AI Studio API key |
+
+### Verify a deployment
+
+```bash
+curl $CLOUD_RUN_URL/health
+# {"status":"ok"}
+
+curl -X POST $CLOUD_RUN_URL/enhance \
+  -H "Content-Type: application/json" \
+  -d '{"voice_transcript": "fix the error", "cwd": "/app"}'
+```
+
+### Local config after deploy
+
 ```yaml
 llm:
   provider: gemini
-  model: gemini-2.0-flash
+  model: gemini-2.5-flash-lite
   api_key: ${GEMINI_API_KEY}
   cloud_run_url: ${CLOUD_RUN_URL}
-```
-
-### Test the deployed service
-
-```bash
-curl -X POST $CLOUD_RUN_URL/enhance \
-  -H "Content-Type: application/json" \
-  -d '{"voice_transcript": "fix the error", "terminal": {"cwd": "/app", "last_commands": [], "detected_errors": []}}'
 ```
 
 ---

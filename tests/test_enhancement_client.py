@@ -72,7 +72,7 @@ class TestEnhanceWithFallback:
     async def test_uses_cloud_run_when_gemini(self, httpx_mock):
         httpx_mock.add_response(json={"enhanced_prompt": "Enhanced via Cloud Run"})
         config = LLMConfig(
-            provider="gemini", model="gemini-2.0-flash", cloud_run_url=_CLOUD_RUN_URL
+            provider="gemini", model="gemini-2.5-flash-lite", cloud_run_url=_CLOUD_RUN_URL
         )
         result = await enhance_with_fallback(_SUMMARY, config, fallback_text="fallback")
         assert result.text == "Enhanced via Cloud Run"
@@ -92,7 +92,7 @@ class TestEnhanceWithFallback:
     async def test_falls_back_on_cloud_run_failure(self, httpx_mock):
         httpx_mock.add_response(status_code=503, text="Service Unavailable")
         config = LLMConfig(
-            provider="gemini", model="gemini-2.0-flash", cloud_run_url=_CLOUD_RUN_URL
+            provider="gemini", model="gemini-2.5-flash-lite", cloud_run_url=_CLOUD_RUN_URL
         )
         with patch(
             "prompt_shell.enhancer.enhancement_client.enhance_prompt",
@@ -104,7 +104,7 @@ class TestEnhanceWithFallback:
         mock_enhance.assert_called_once()
 
     async def test_skips_cloud_run_when_no_url(self):
-        config = LLMConfig(provider="gemini", model="gemini-2.0-flash", cloud_run_url=None)
+        config = LLMConfig(provider="gemini", model="gemini-2.5-flash-lite", cloud_run_url=None)
         with patch(
             "prompt_shell.enhancer.enhancement_client.enhance_prompt",
             new_callable=AsyncMock,

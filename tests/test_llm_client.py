@@ -225,6 +225,6 @@ class TestResolveModelName:
         assert client._model_name == "anthropic/claude-3-5-haiku-20241022"
 
     def test_resolve_model_gemini(self):
-        config = LLMConfig(provider="gemini", model="gemini-2.0-flash")
+        config = LLMConfig(provider="gemini", model="gemini-2.5-flash-lite")
         client = LLMClient(config)
-        assert client._model_name == "gemini/gemini-2.0-flash"
+        assert client._model_name == "gemini/gemini-2.5-flash-lite"
