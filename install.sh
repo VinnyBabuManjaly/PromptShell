@@ -78,6 +78,9 @@ install_linux_deps() {
 
     # wl-clipboard for Wayland (non-fatal if unavailable)
     sudo apt-get install -y --no-install-recommends wl-clipboard 2>/dev/null || true
+    # Screenshot: gnome-screenshot (GNOME), grim (wlroots Wayland), scrot (X11)
+    sudo apt-get install -y --no-install-recommends gnome-screenshot scrot 2>/dev/null || true
+    sudo apt-get install -y --no-install-recommends grim 2>/dev/null || true
 
   elif command -v dnf &>/dev/null; then
     step "Installing system dependencies (dnf)..."
@@ -86,6 +89,8 @@ install_linux_deps() {
       python3-devel gcc \
       libnotify \
       xclip
+    sudo dnf install -y scrot 2>/dev/null || true
+    sudo dnf install -y grim 2>/dev/null || true
 
   elif command -v pacman &>/dev/null; then
     step "Installing system dependencies (pacman)..."
@@ -94,7 +99,9 @@ install_linux_deps() {
       python \
       libnotify \
       xclip \
-      wl-clipboard
+      wl-clipboard \
+      grim \
+      scrot
 
   elif command -v zypper &>/dev/null; then
     step "Installing system dependencies (zypper)..."
@@ -103,6 +110,8 @@ install_linux_deps() {
       python3-devel gcc \
       libnotify-tools \
       xclip
+    sudo zypper install -y scrot 2>/dev/null || true
+    sudo zypper install -y grim 2>/dev/null || true
 
   else
     warn "No recognised package manager (apt/dnf/pacman/zypper)."
@@ -110,6 +119,7 @@ install_linux_deps() {
     warn "  libportaudio2 / portaudio-devel"
     warn "  xclip or wl-clipboard"
     warn "  libnotify / libnotify-bin"
+    warn "  grim (Wayland) or scrot (X11) — for screenshot capture"
   fi
 }
 
