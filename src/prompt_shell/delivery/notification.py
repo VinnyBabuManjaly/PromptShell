@@ -130,15 +130,21 @@ def _notify_linux(title: str, message: str, subtitle: str | None) -> bool:
         return False
 
 
-async def notify_enhanced_prompt(enhanced_prompt: str, preview_chars: int = 100) -> bool:
+async def notify_enhanced_prompt(
+    enhanced_prompt: str,
+    preview_chars: int = 100,
+    used_fallback: bool = False,
+) -> bool:
     """Show a notification that the prompt has been enhanced."""
     preview = enhanced_prompt[:preview_chars]
     if len(enhanced_prompt) > preview_chars:
         preview += "..."
 
+    subtitle = "Template fallback (LLM unavailable)" if used_fallback else "Copied to clipboard"
+
     return await show_notification(
         title="Prompt Enhanced",
-        subtitle="Copied to clipboard",
+        subtitle=subtitle,
         message=preview,
     )
 
