@@ -1,43 +1,50 @@
-name: Deploy to Cloud Run
+name: Deploy to Cloud Run (Manual)
 
-# Trigger on pushes to main that touch the Cloud Run service code,
-# or manually via workflow_dispatch.
+# This workflow is for manual re-deploys only — e.g. to rotate secrets,
+# redeploy after a config change, or recover from an incident without
+# cutting a new release.
+#
+# Normal deployments happen automatically via release.yml when a version
+# tag (v*.*.*) is pushed. Use this only when you need to deploy outside
+# of a release.
+#
+# Required repository secrets:
+#   GCP_PROJECT_ID  — GCP project ID
+#   GCP_SA_KEY      — Service account JSON key, base64-encoded
+#   GEMINI_API_KEY  — Google AI Studio API key
+#
+# See docs/deployment.md for setup instructions.
+
 on:
-  push:
-    branches: [main]
-    paths:
-      - cloud_run_service/**
-      - cloudbuild.yaml
-      - deploy.sh
   workflow_dispatch:
     inputs:
       region:
         description: Cloud Run region
         required: false
         default: us-central1
+      image_tag:
+        description: Image tag to deploy (default: latest)
+        required: false
+        default: latest
 
 permissions:
   contents: read
-  id-token: write   # Required for Workload Identity Federation
+  id-token: write
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE_NAME: prompt-shell-enhancer
-  REGION: ${{ github.event.inputs.region || 'us-central1' }}
-  IMAGE: gcr.io/${{ secrets.GCP_PROJECT_ID }}/prompt-shell-enhancer
+  REGION: ${{ github.event.inputs.region }}
+  IMAGE_TAG: ${{ github.event.inputs.image_tag }}
 
 jobs:
   deploy:
-    name: Build & Deploy
+    name: Manual Deploy
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v6
 
-      # Authenticate to Google Cloud using a service account key stored
-      # as the GCP_SA_KEY secret (JSON key file, base64-encoded).
-      # To use Workload Identity Federation instead, replace this step with
-      # google-github-actions/auth@v2 using workload_identity_provider.
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -48,30 +55,19 @@ jobs:
         with:
           project_id: ${{ env.PROJECT_ID }}
 
-      - name: Configure Docker for GCR
-        run: gcloud auth configure-docker --quiet
-
-      - name: Enable required GCP APIs
-        run: |
-          gcloud services enable \
-            run.googleapis.com \
-            cloudbuild.googleapis.com \
-            containerregistry.googleapis.com \
-            --project "$PROJECT_ID"
-
       - name: Build container image
         run: |
           gcloud builds submit \
-            --tag "$IMAGE" \
-            --project "$PROJECT_ID" \
+            --tag "gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}" \
+            --project "${{ env.PROJECT_ID }}" \
             ./cloud_run_service/
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy "$SERVICE_NAME" \
-            --image "$IMAGE" \
+          gcloud run deploy "${{ env.SERVICE_NAME }}" \
+            --image "gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE_NAME }}:${{ env.IMAGE_TAG }}" \
             --platform managed \
-            --region "$REGION" \
+            --region "${{ env.REGION }}" \
             --allow-unauthenticated \
             --set-env-vars "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" \
             --memory 512Mi \
@@ -79,13 +75,18 @@ jobs:
             --min-instances 0 \
             --max-instances 10 \
             --timeout 30s \
-            --project "$PROJECT_ID"
+            --project "${{ env.PROJECT_ID }}"
 
-      - name: Print service URL
+      - name: Get service URL and verify health
         run: |
-          URL=$(gcloud run services describe "$SERVICE_NAME" \
-            --region "$REGION" \
-            --project "$PROJECT_ID" \
+          URL=$(gcloud run services describe "${{ env.SERVICE_NAME }}" \
+            --region "${{ env.REGION }}" \
+            --project "${{ env.PROJECT_ID }}" \
             --format "value(status.url)")
           echo "Service URL: $URL"
-          echo "Health check: $(curl -sf $URL/health || echo 'FAILED')"
+          STATUS=$(curl -sf "$URL/health" | python3 -c "import sys,json; print(json.load(sys.stdin)['status'])")
+          if [ "$STATUS" != "ok" ]; then
+            echo "Health check failed — got: $STATUS"
+            exit 1
+          fi
+          echo "Health check passed."
