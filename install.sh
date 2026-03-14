@@ -180,7 +180,6 @@ if [ "$PLATFORM" = "linux" ] && command -v systemctl &>/dev/null; then
   step "Installing systemd user service..."
   prompt-shell install-service
 fi
-
 # ── Done ──────────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────────────"
