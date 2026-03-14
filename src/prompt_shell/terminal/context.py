@@ -31,6 +31,7 @@ class ContextPayload:
     terminal: TerminalState = field(default_factory=TerminalState)
     detected_errors: list[DetectedError] = field(default_factory=list)
     project: ProjectInfo = field(default_factory=ProjectInfo)
+    screenshot_b64: str | None = None
 
 
 # Project type detection rules: (marker_file, project_type)
@@ -85,6 +86,7 @@ class ContextBuilder:
         self,
         terminal_state: TerminalState,
         voice_transcript: str = "",
+        screenshot_b64: str | None = None,
     ) -> ContextPayload:
         """Aggregate terminal data, detect errors, and build context payload."""
         # Detect errors in screen buffer
@@ -103,6 +105,7 @@ class ContextBuilder:
             terminal=terminal_state,
             detected_errors=detected_errors,
             project=project,
+            screenshot_b64=screenshot_b64,
         )
 
     def build_summary(self, context: ContextPayload) -> dict:
@@ -137,4 +140,5 @@ class ContextBuilder:
             "detected_errors": "\n".join(error_summaries) or "none detected",
             "project_type": context.project.project_type or "unknown",
             "project_name": context.project.project_name or "unknown",
+            "screenshot_b64": context.screenshot_b64,
         }
