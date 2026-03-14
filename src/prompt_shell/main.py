@@ -227,32 +227,32 @@ async def run_hotkey_daemon(config: AppConfig) -> None:
 
     def on_press(key):
         nonlocal pipeline_future
+        prev_pressed = frozenset(current_keys)
         current_keys.add(key)
-
         pressed = frozenset(current_keys)
 
-        if activate_combo.issubset(pressed):
+        if _combo_just_completed(activate_combo, prev_pressed, pressed):
             logger.info("Hotkey: activate")
             if pipeline_future is None or pipeline_future.done():
                 pipeline_future = asyncio.run_coroutine_threadsafe(
                     _run_tracked(run_pipeline(config, voice=True)), loop
                 )
 
-        elif context_combo.issubset(pressed):
+        elif _combo_just_completed(context_combo, prev_pressed, pressed):
             logger.info("Hotkey: context_only")
             if pipeline_future is None or pipeline_future.done():
                 pipeline_future = asyncio.run_coroutine_threadsafe(
                     _run_tracked(run_pipeline(config, voice=False, clipboard_input=True)), loop
                 )
 
-        elif re_enhance_combo.issubset(pressed):
+        elif _combo_just_completed(re_enhance_combo, prev_pressed, pressed):
             logger.info("Hotkey: re_enhance")
             if pipeline_future is None or pipeline_future.done():
                 pipeline_future = asyncio.run_coroutine_threadsafe(
                     _run_tracked(run_pipeline(config, voice=False, clipboard_input=True)), loop
                 )
 
-        elif cancel_combo.issubset(pressed):
+        elif _combo_just_completed(cancel_combo, prev_pressed, pressed):
             logger.info("Hotkey: cancel")
             task = _active_task[0]
             if task and not task.done():
@@ -479,6 +479,20 @@ def init():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _combo_just_completed(
+    combo: frozenset,
+    prev_pressed: frozenset,
+    current_pressed: frozenset,
+) -> bool:
+    """Return True only when *combo* is satisfied for the first time with this key press.
+
+    This implements leading-edge detection: the combo fires exactly once when
+    the last required key is pressed, not on auto-repeat or when unrelated keys
+    are added while the combo is already held.
+    """
+    return combo.issubset(current_pressed) and not combo.issubset(prev_pressed)
 
 
 def _setup_logging(verbose: bool = False) -> None:
