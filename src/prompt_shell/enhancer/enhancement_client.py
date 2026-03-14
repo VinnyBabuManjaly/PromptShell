@@ -54,8 +54,8 @@ async def enhance_with_fallback(
     fallback_text: str | None = None,
 ) -> EnhanceResult:
     """Try Cloud Run (if gemini provider + url set), fall back to litellm or template."""
-    if config.provider == "gemini" and config.cloud_run_url:
-        resolved_url = config.resolve_cloud_run_url()
+    resolved_url = config.resolve_cloud_run_url() if config.provider == "gemini" else None
+    if resolved_url:
         try:
             text = await enhance_via_cloud_run(summary, resolved_url)
             return EnhanceResult(text=text)
