@@ -15,6 +15,7 @@ Rules:
 5. Preserve the user's original intent — do NOT add new tasks they didn't request
 6. If the terminal shows a specific technology stack, mention it
 7. Write in second person ("Fix the..." not "The user wants...")
+8. If a terminal screenshot is attached, use it to confirm visible error messages and identify any UI details the text context may have missed
 
 ---
 

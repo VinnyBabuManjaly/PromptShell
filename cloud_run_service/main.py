@@ -53,6 +53,7 @@ class EnhanceRequest(BaseModel):
     screen_buffer_last_50: str = ""
     project_type: str = "unknown"
     project_name: str = "unknown"
+    screenshot_b64: str | None = None
 
 
 class EnhanceResponse(BaseModel):
@@ -65,7 +66,9 @@ async def enhance(request: EnhanceRequest) -> EnhanceResponse:
     try:
         client = _get_gemini_client()
         meta_prompt = build_meta_prompt(request.model_dump())
-        enhanced = generate_enhanced_prompt(client, meta_prompt, model=GEMINI_MODEL)
+        enhanced = generate_enhanced_prompt(
+            client, meta_prompt, model=GEMINI_MODEL, screenshot_b64=request.screenshot_b64
+        )
         logger.info("Enhanced prompt (%d chars)", len(enhanced))
         return EnhanceResponse(enhanced_prompt=enhanced)
     except RuntimeError as e:
