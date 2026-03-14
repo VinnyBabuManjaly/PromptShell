@@ -176,15 +176,32 @@ delivery:
 
 ## Google Cloud Deployment
 
-The enhancement service runs on Cloud Run. Deploy it once; the local client calls it on every hotkey trigger.
+The enhancement service runs on Cloud Run using **Gemini 2.0 Flash** via the **Google GenAI SDK**. Deploy it once; the local client calls it on every hotkey trigger.
+
+### One-command deploy
 
 ```bash
-# Set your project and API key
 export PROJECT_ID=your-gcp-project-id
 export GEMINI_API_KEY=your-gemini-api-key
+bash deploy.sh
+```
 
-# Build and deploy
+`deploy.sh` enables the required GCP APIs, builds the container image via Cloud Build, deploys to Cloud Run, and prints the service URL with the config snippet to paste.
+
+### Manual steps (if you prefer)
+
+```bash
+# Authenticate and set project
+gcloud auth login
+gcloud config set project $PROJECT_ID
+
+# Enable required APIs
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com containerregistry.googleapis.com
+
+# Build image via Cloud Build
 gcloud builds submit --tag gcr.io/$PROJECT_ID/prompt-shell-enhancer ./cloud_run_service/
+
+# Deploy to Cloud Run
 gcloud run deploy prompt-shell-enhancer \
   --image gcr.io/$PROJECT_ID/prompt-shell-enhancer \
   --platform managed \
@@ -192,14 +209,49 @@ gcloud run deploy prompt-shell-enhancer \
   --allow-unauthenticated \
   --set-env-vars GEMINI_API_KEY=$GEMINI_API_KEY \
   --memory 512Mi \
-  --min-instances 0
+  --cpu 1 \
+  --min-instances 0 \
+  --max-instances 10 \
+  --timeout 30s
 
-# Copy the service URL into your config
+# Get service URL
 export CLOUD_RUN_URL=$(gcloud run services describe prompt-shell-enhancer \
   --region us-central1 --format 'value(status.url)')
 ```
 
-Cost at demo/dev scale: **~$0/month** (Cloud Run free tier covers millions of requests; Gemini 2.0 Flash free tier covers 1,500 req/day).
+### Verify the deployment
+
+```bash
+curl $CLOUD_RUN_URL/health
+# {"status":"ok"}
+
+curl -X POST $CLOUD_RUN_URL/enhance \
+  -H "Content-Type: application/json" \
+  -d '{"voice_transcript": "fix the error", "cwd": "/app"}'
+```
+
+### Local config
+
+Add the service URL to `~/.prompt-shell/config.yaml`:
+
+```yaml
+llm:
+  provider: gemini
+  model: gemini-2.0-flash
+  api_key: ${GEMINI_API_KEY}
+  cloud_run_url: ${CLOUD_RUN_URL}
+```
+
+### CI/CD (automated deploys)
+
+The repository includes two options for automated deployment:
+
+- **`.github/workflows/deploy-cloud-run.yml`** — GitHub Actions workflow that deploys on every push to `main` that touches `cloud_run_service/`. Requires three repository secrets: `GCP_PROJECT_ID`, `GCP_SA_KEY` (service account JSON, base64-encoded), and `GEMINI_API_KEY`.
+- **`cloudbuild.yaml`** — Cloud Build config for use with a Cloud Build trigger. The `GEMINI_API_KEY` is pulled from Secret Manager (secret name: `gemini-api-key`).
+
+### Cost
+
+**~$0/month** at demo/personal scale — Cloud Run scales to zero and the free tier covers millions of requests/month. Gemini 2.0 Flash free tier covers 1,500 requests/day.
 
 ## Documentation
 

@@ -1,0 +1,67 @@
+# cloudbuild.yaml — Google Cloud Build configuration for the PromptShell
+# enhancement service.
+#
+# Triggered automatically by Cloud Build triggers (e.g. push to main) or
+# manually via:
+#   gcloud builds submit --config cloudbuild.yaml \
+#     --substitutions _REGION=us-central1,_SERVICE_NAME=prompt-shell-enhancer \
+#     --project $PROJECT_ID
+#
+# Required substitution (set in Cloud Build trigger or pass via --substitutions):
+#   _GEMINI_API_KEY — set this as a secret substitution in your trigger config,
+#                     or reference a Secret Manager secret.
+
+substitutions:
+  _REGION: us-central1
+  _SERVICE_NAME: prompt-shell-enhancer
+  _IMAGE: gcr.io/$PROJECT_ID/${_SERVICE_NAME}
+
+steps:
+  # Step 1: Build the Docker image
+  - name: gcr.io/cloud-builders/docker
+    id: build
+    args:
+      - build
+      - -t
+      - ${_IMAGE}
+      - ./cloud_run_service/
+
+  # Step 2: Push the image to Container Registry
+  - name: gcr.io/cloud-builders/docker
+    id: push
+    args:
+      - push
+      - ${_IMAGE}
+    waitFor: [build]
+
+  # Step 3: Deploy to Cloud Run
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    id: deploy
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_IMAGE}
+      - --platform=managed
+      - --region=${_REGION}
+      - --allow-unauthenticated
+      - --memory=512Mi
+      - --cpu=1
+      - --min-instances=0
+      - --max-instances=10
+      - --timeout=30s
+      - --set-env-vars=GEMINI_API_KEY=$$GEMINI_API_KEY
+    secretEnv: [GEMINI_API_KEY]
+    waitFor: [push]
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/gemini-api-key/versions/latest
+      env: GEMINI_API_KEY
+
+images:
+  - ${_IMAGE}
+
+options:
+  logging: CLOUD_LOGGING_ONLY
