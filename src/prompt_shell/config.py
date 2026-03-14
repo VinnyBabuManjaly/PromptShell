@@ -19,6 +19,7 @@ class TerminalConfig(BaseModel):
     backend: Literal["auto", "shell_hook", "tmux", "iterm2", "generic"] = "auto"
     screen_buffer_lines: int = Field(default=100, ge=10, le=1000)
     poll_interval_ms: int = Field(default=2000, ge=500, le=10000)
+    capture_screenshot: bool = True
 
 
 class VoiceConfig(BaseModel):
