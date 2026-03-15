@@ -44,7 +44,6 @@ async def run_pipeline(
     from prompt_shell.delivery.notification import (
         notify_enhanced_prompt,
         notify_error,
-        notify_fallback,
         notify_listening,
     )
     from prompt_shell.enhancer.enhancement_client import enhance_with_fallback
@@ -56,7 +55,7 @@ async def run_pipeline(
 
     logger = logging.getLogger(__name__)
 
-    # --- Step 1: Terminal context ---
+    # --- Step 1: Terminal context + screenshot (concurrent) ---
     terminal_state = TerminalState()
     try:
         backend = create_backend(
@@ -67,6 +66,13 @@ async def run_pipeline(
         terminal_state = await backend.snapshot()
     except Exception as e:
         logger.warning("Terminal context capture failed: %s (continuing without it)", e)
+
+    # Launch screenshot capture concurrently — it completes while voice is recording.
+    screenshot_task: asyncio.Task[str | None] | None = None
+    if config.terminal.capture_screenshot:
+        from prompt_shell.terminal.screenshot import capture_screenshot_b64
+
+        screenshot_task = asyncio.create_task(capture_screenshot_b64())
 
     # --- Step 2: Voice / clipboard input ---
     # When transcript is pre-supplied (e.g., direct text from CLI), skip capture.
@@ -106,23 +112,36 @@ async def run_pipeline(
         console.print(f"[green]Clipboard:[/] {transcript[:80]}...")
 
     # --- Step 3: Build context ---
+    screenshot_b64: str | None = None
+    if screenshot_task is not None:
+        try:
+            screenshot_b64 = await screenshot_task
+            if screenshot_b64:
+                logger.debug("Screenshot captured (%d b64 chars)", len(screenshot_b64))
+        except Exception as e:
+            logger.warning("Screenshot capture failed: %s (continuing without it)", e)
+
     builder = ContextBuilder()
-    context = builder.build(terminal_state, voice_transcript=transcript)
+    context = builder.build(
+        terminal_state, voice_transcript=transcript, screenshot_b64=screenshot_b64
+    )
     summary = builder.build_summary(context)
 
     # --- Step 4: Enhance via LLM ---
     console.print("[dim]Enhancing prompt...[/]")
     fallback = build_fallback_prompt(summary)
 
+    used_fallback = False
     try:
         result = await enhance_with_fallback(summary, config.llm, fallback_text=fallback)
         enhanced = result.text
-        if result.used_fallback:
+        used_fallback = result.used_fallback
+        if used_fallback:
             console.print(f"[yellow]LLM unavailable ({result.error}), using template fallback.[/]")
-            await notify_fallback(result.error or "unknown error")
     except Exception:
         logger.warning("LLM unavailable, using template fallback")
         enhanced = fallback
+        used_fallback = True
 
     # --- Step 5: Deliver ---
     console.print(Panel(enhanced, title="Enhanced Prompt", border_style="green"))
@@ -136,7 +155,9 @@ async def run_pipeline(
 
     if config.delivery.show_notification:
         await notify_enhanced_prompt(
-            enhanced, preview_chars=config.delivery.notification_preview_chars
+            enhanced,
+            preview_chars=config.delivery.notification_preview_chars,
+            used_fallback=used_fallback,
         )
 
     return enhanced
@@ -206,32 +227,32 @@ async def run_hotkey_daemon(config: AppConfig) -> None:
 
     def on_press(key):
         nonlocal pipeline_future
+        prev_pressed = frozenset(current_keys)
         current_keys.add(key)
-
         pressed = frozenset(current_keys)
 
-        if activate_combo.issubset(pressed):
+        if _combo_just_completed(activate_combo, prev_pressed, pressed):
             logger.info("Hotkey: activate")
             if pipeline_future is None or pipeline_future.done():
                 pipeline_future = asyncio.run_coroutine_threadsafe(
                     _run_tracked(run_pipeline(config, voice=True)), loop
                 )
 
-        elif context_combo.issubset(pressed):
+        elif _combo_just_completed(context_combo, prev_pressed, pressed):
             logger.info("Hotkey: context_only")
             if pipeline_future is None or pipeline_future.done():
                 pipeline_future = asyncio.run_coroutine_threadsafe(
                     _run_tracked(run_pipeline(config, voice=False, clipboard_input=True)), loop
                 )
 
-        elif re_enhance_combo.issubset(pressed):
+        elif _combo_just_completed(re_enhance_combo, prev_pressed, pressed):
             logger.info("Hotkey: re_enhance")
             if pipeline_future is None or pipeline_future.done():
                 pipeline_future = asyncio.run_coroutine_threadsafe(
                     _run_tracked(run_pipeline(config, voice=False, clipboard_input=True)), loop
                 )
 
-        elif cancel_combo.issubset(pressed):
+        elif _combo_just_completed(cancel_combo, prev_pressed, pressed):
             logger.info("Hotkey: cancel")
             task = _active_task[0]
             if task and not task.done():
@@ -458,6 +479,20 @@ def init():
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _combo_just_completed(
+    combo: frozenset,
+    prev_pressed: frozenset,
+    current_pressed: frozenset,
+) -> bool:
+    """Return True only when *combo* is satisfied for the first time with this key press.
+
+    This implements leading-edge detection: the combo fires exactly once when
+    the last required key is pressed, not on auto-repeat or when unrelated keys
+    are added while the combo is already held.
+    """
+    return combo.issubset(current_pressed) and not combo.issubset(prev_pressed)
 
 
 def _setup_logging(verbose: bool = False) -> None:
