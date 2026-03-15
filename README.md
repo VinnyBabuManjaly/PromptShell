@@ -180,55 +180,68 @@ CWD: ~/project/backend, branch: feature/auth-refactor
 ## Architecture
 
 ```mermaid
-flowchart LR
-    subgraph U["👤 Developer Interface"]
-        A["Hotkey Trigger"]
-        B["Voice Command"]
+flowchart TB
+    subgraph INPUT["1 · Trigger"]
+        HK["Hotkey<br/><i>Ctrl+Alt+E — starts voice + capture</i>"]
+        CLI["CLI<br/><i>prompt-shell enhance 'text'</i>"]
     end
 
-    subgraph L["🖥️ Local AI Agent"]
-        C["Context Capture\n(terminal + screenshot + voice)"]
-        D["Error & Project Detection"]
-        E["Context Builder"]
+    subgraph CAPTURE["2 · Capture (concurrent)"]
+        TM["Terminal Monitor<br/><i>tmux · iTerm2 · shell hook · generic</i>"]
+        SS["Screenshot Capture"]
+        VR["Voice Recorder + Transcriber<br/><i>hotkey only — skipped when text provided via CLI</i>"]
     end
 
-    subgraph C1["☁️ AI Enhancement Platform"]
-        F["FastAPI Service\nCloud Run"]
-        G["Meta-Prompt Builder"]
-        H["Gemini 2.5 Flash Lite\n(multimodal)"]
+    subgraph BUILD["3 · Build"]
+        CB["Context Builder<br/><i>error detection · project detection</i>"]
     end
 
-    subgraph R["⚙️ Resilience Layer"]
-        I["Local LLM Fallback\n(Ollama / OpenAI / Anthropic)"]
-        J["Template Generator"]
+    subgraph ENHANCE["4 · Enhance"]
+        EC["Enhancement Client"]
     end
 
-    subgraph O["📋 Developer Output"]
-        K["Enhanced Prompt"]
-        L2["Clipboard + Notification"]
+    subgraph GCP["☁️ Google Cloud"]
+        CR["Cloud Run — FastAPI"]
+        PB["Meta-Prompt Builder"]
+        GM["Gemini 2.5 Flash Lite<br/><i>multimodal: text + screenshot</i>"]
     end
 
-    A --> C
-    B --> C
+    subgraph FALLBACK["Local Fallback"]
+        LLM["Local LLM<br/><i>Ollama</i>"]
+        TPL["Template Generator"]
+    end
 
-    C --> D
-    D --> E
+    subgraph OUTPUT["5 · Deliver"]
+        DL["Clipboard · File · iTerm2 Paste<br/><i>+ Desktop Notification</i>"]
+    end
 
-    E --> F
-    F --> G
-    G --> H
-    H --> F
+    HK --> TM & SS & VR
+    CLI --> TM & SS
+    CLI -. "text input" .-> CB
 
-    F --> K
+    TM --> CB
+    SS --> CB
+    VR --> CB
 
-    F -. fallback .-> I
-    I -. fallback .-> J
-    J --> K
+    CB --> EC
 
-    K --> L2
+    EC -- "HTTP POST /enhance" --> CR
+    CR --> PB --> GM
+    GM --> CR
+    CR -- "enhanced prompt" --> EC
+
+    EC -. "Cloud Run unreachable" .-> LLM
+    LLM -. "LLM unavailable" .-> TPL
+
+    LLM -- "enhanced prompt" --> EC
+    TPL -- "fallback prompt" --> EC
+
+    EC --> DL
 ```
 
-Everything in the **Local AI Agent** box stays on-device. The only network call is the POST to Cloud Run. If Cloud Run is unreachable, the resilience layer ensures you always get output.
+Everything inside steps 1–5 runs on your machine. The only network call is
+the POST to Cloud Run (step 4). If Cloud Run is unreachable, the Enhancement
+Client falls back to a local LLM, then to a template — you always get output.
 
 Full system design: [docs/system_design.md](docs/system_design.md).
 
