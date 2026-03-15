@@ -1,76 +1,75 @@
 # PromptShell — System Design
 
 ## 1. High-Level Architecture
-
 ```mermaid
 flowchart TB
     subgraph USER["👤 Developer"]
-        HK["Hotkey\nCtrl+Alt+E"]
-        MIC["🎙️ Microphone\n(voice command)"]
-        CB["📋 Clipboard\n(enhanced prompt)"]
+        HK["Hotkey<br/>Ctrl+Alt+E"]
+        MIC["🎙️ Microphone<br/>(voice command)"]
+        CB["📋 Clipboard<br/>(enhanced prompt)"]
     end
 
-    subgraph LOCAL["🖥️  Local Machine  (macOS / Linux)"]
+    subgraph LOCAL["🖥️ Local Machine (macOS / Linux)"]
         direction TB
 
-        subgraph CAPTURE["Context Capture  (concurrent)"]
-            TM["Terminal Monitor\n4 backends"]
-            SC["Screenshot Capture\ngrim / scrot / screencapture"]
-            VC["Voice Capture\nsounddevice + VAD"]
-            TR["Transcription\nfaster-whisper (local)"]
+        subgraph CAPTURE["Context Capture (concurrent)"]
+            TM["Terminal Monitor<br/>4 backends"]
+            SC["Screenshot Capture<br/>grim / scrot / screencapture"]
+            VC["Voice Capture<br/>sounddevice + VAD"]
+            TR["Transcription<br/>faster-whisper (local)"]
         end
 
         subgraph CORE["Core Pipeline"]
-            ED["Error Detection Engine\n12+ regex pattern families"]
-            PD["Project Detector\npackage.json / Cargo.toml / go.mod …"]
-            CB2["Context Builder\n→ ContextPayload"]
-            EC["Enhancement Client\nhttpx async POST"]
+            ED["Error Detection Engine<br/>12+ regex pattern families"]
+            PD["Project Detector<br/>package.json / Cargo.toml / go.mod"]
+            CB2["Context Builder<br/>ContextPayload"]
+            EC["Enhancement Client<br/>httpx async POST"]
         end
 
         subgraph FALLBACK["Local Fallback"]
-            LC["LLM Client\nlitellm → Ollama / OpenAI / Anthropic"]
-            TPL["Template Builder\n(no LLM)"]
+            LC["LLM Client<br/>litellm -> Ollama / OpenAI / Anthropic"]
+            TPL["Template Builder<br/>(no LLM)"]
         end
 
         subgraph DELIVER["Delivery"]
             DEL["Delivery Engine"]
-            NOTIF["Notification\nosascript / notify-send"]
+            NOTIF["Notification<br/>osascript / notify-send"]
         end
     end
 
-    subgraph GCP["☁️  Google Cloud Platform"]
+    subgraph GCP["☁️ Google Cloud Platform"]
         subgraph CR["Cloud Run Service"]
-            API["FastAPI\nPOST /enhance\nGET /health"]
-            PB["Meta-Prompt Builder\n3-step template"]
-            GC["Google GenAI SDK\ngoogle-genai"]
+            API["FastAPI<br/>POST /enhance<br/>GET /health"]
+            PB["Meta-Prompt Builder<br/>3-step template"]
+            GC["Google GenAI SDK<br/>google-genai"]
         end
-        GEMINI["✨ Gemini 2.5 Flash Lite\n(multimodal: text + image)"]
-        SM["Secret Manager\nGEMINI_API_KEY"]
-        AR["Artifact Registry\nDocker image"]
+        GEMINI["Gemini 2.5 Flash Lite<br/>(multimodal: text + image)"]
+        SM["Secret Manager<br/>GEMINI_API_KEY"]
+        AR["Artifact Registry<br/>Docker image"]
     end
 
-    HK -->|trigger| CAPTURE
-    MIC -->|audio stream| VC
+    HK --> CAPTURE
+    MIC --> VC
     VC --> TR
-    TM -->|TerminalState| CB2
-    SC -->|PNG base64| CB2
-    TR -->|transcript| CB2
-    ED -->|DetectedError[]| CB2
-    PD -->|ProjectInfo| CB2
+    TM --> CB2
+    SC --> CB2
+    TR --> CB2
+    ED --> CB2
+    PD --> CB2
     TM --> ED
     TM --> PD
 
-    CB2 -->|ContextPayload JSON| EC
-    EC -->|HTTP POST /enhance| API
+    CB2 --> EC
+    EC --> API
     API --> PB
-    PB -->|meta-prompt + screenshot| GC
-    GC -->|contents| GEMINI
-    GEMINI -->|enhanced prompt| GC
+    PB --> GC
+    GC --> GEMINI
+    GEMINI --> GC
     GC --> API
-    API -->|enhanced_prompt| EC
+    API --> EC
 
-    EC -->|Cloud Run unreachable?| LC
-    LC -->|LLM unavailable?| TPL
+    EC --> LC
+    LC --> TPL
 
     EC --> DEL
     LC --> DEL
@@ -78,10 +77,9 @@ flowchart TB
     DEL --> CB
     DEL --> NOTIF
 
-    SM -.->|API key at deploy| CR
-    AR -.->|container image| CR
+    SM -.-> CR
+    AR -.-> CR
 ```
-
 ---
 
 ## 2. End-to-End Pipeline Sequence
