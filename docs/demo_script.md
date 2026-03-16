@@ -69,27 +69,45 @@ Format: Screen recording with voiceover
 
 > Here's what happens under the hood.
 >
-> The Multimodal Context Agent launches three captures concurrently — the Terminal State Monitor grabs the screen buffer, Vision Capture takes
+> The Multimodal Context Agent launches three captures concurrently — 
 >
-> a screenshot, and Speech-to-Text powered by Whisper AI transcribes your voice locally. Your voice never leaves your machine.               
-
+> the Terminal State Monitor grabs the screen buffer, 
+>
+> Vision Capture takes a screenshot, and 
+>
+> Speech-to-Text powered by Whisper AI transcribes your voice locally. Your voice never leaves your machine.               
+>
 > The Context Aggregator assembles everything — errors, project type, git branch, screenshot —everything into a single payload.
-
-> The AI Orchestrator sends a Multimodal API Request to the Google Cloud AI Platform — Cloud Run runs the Prompt Engineering Engine, which
-
-> feeds both text and screenshot to Gemini 2.5 Flash Lite as multimodal input. Back comes the AI-Enhanced Prompt.
-
-> If Cloud Run is unreachable, the Offline AI Fallback kicks in — local model first, then a template. You always get output.
+>
+> The AI Orchestrator sends a Multimodal API Request to the Google Cloud AI Platform 
+>
+> Cloud Run runs the Prompt Engineering Engine, which feeds both text and screenshot to Gemini 2.5 Flash Lite as multimodal input. 
+>
+> Back comes the AI-Enhanced Prompt.
+>
+> If Cloud Run is unreachable, the Offline AI Fallback kicks in — 
+>
+> local model first, then a template. 
+>
+> You always get output.
+>
 > Result lands in your clipboard. Done.
 ---
 
 ## [3:00–3:30] THE NUMBERS — Why It Matters (30s)
 
 > Let's talk about what this actually saves.
-> Without PromptShell, fixing one error takes 3 to 5 rounds of back-and-forth — thousands of tokens wasted before you get a useful answer.
 >
-> With PromptShell — one round. 60 to 75% fewer tokens. That's roughly $540 per developer per year saved in API credits alone.                
->   
+> Without PromptShell, fixing one error takes 3 to 5 rounds of back-and-forth 
+>
+> thousands of tokens wasted before you get a useful answer.
+>
+> With PromptShell — one round.
+>
+> 60 to 75% fewer tokens. 
+>
+> That's roughly $540 per developer per year saved in API credits alone.                
+>
 > But the real win is the time. Speak, and get a precise prompt in two seconds.
 
 ---
