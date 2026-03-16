@@ -1,6 +1,6 @@
 # PromptShell — Development Guide
 
-> This file is kept at the repository root so AI coding agents (GitHub Copilot Workspace, Cursor, etc.) can discover it automatically alongside `CLAUDE.md`. For architecture diagrams and the full technical spec, see [`docs/architecture.md`](docs/architecture.md) and [`docs/spec.md`](docs/spec.md).
+For architecture diagrams and the full technical spec, see [`docs/architecture.md`](architecture.md) and [`docs/spec.md`](spec.md).
 
 ## Prerequisites
 

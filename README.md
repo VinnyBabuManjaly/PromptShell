@@ -5,10 +5,10 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-> **"Stop paying for bad prompts. PromptShell gets it right the first time."**
+> **"Great developers don’t write great prompts - they write great code. PromptShell handles the rest."**
 
 A voice-activated, terminal-aware prompt enhancer for AI coding assistants.
-Press a hotkey, speak a vague command like *"fix the error"* — PromptShell
+Press a hotkey, speak a vague command like *"fix the error"* - PromptShell
 captures your full terminal context (screen buffer, working directory, recent
 commands, detected errors, git branch, screenshot) and rewrites it into a
 precise, actionable prompt ready for ChatGPT, Copilot, Claude, Cursor, or any
@@ -83,7 +83,7 @@ Requires **Python 3.11+**. Shells supported: **bash, zsh, fish**.
 
 | Platform | Support | Notes |
 |----------|:-------:|-------|
-| **macOS 12+** | Full | Primary platform — all features available |
+| **macOS 12+** | Full | Primary platform - all features available |
 | **Linux Desktop (X11)** | Full | Requires `xclip` + `scrot` |
 | **Linux Desktop (Wayland)** | Full | Requires `wl-copy` + `grim` |
 | **Linux Headless / SSH** | Partial | No hotkey or clipboard; use `delivery.method: file` |
@@ -136,20 +136,20 @@ by front-loading all the context the AI needs to answer correctly on the first a
 | Tokens per debug task | ~3,000–5,000 | ~1,100 |
 | Token reduction | baseline | **~60–75% fewer** |
 
-The meta-prompt adds ~500 tokens of structured context — but eliminates the
+The meta-prompt adds ~500 tokens of structured context - but eliminates the
 back-and-forth entirely. At $15/million tokens, a developer doing 30 AI
 interactions/day saves roughly **$540/year in API credits** while resolving
 issues faster.
 
 ### Beyond API Credits
 
-- **Zero context-switching** — no manual copy-paste of errors, paths, or branch names
-- **Voice-first** — speak while looking at the terminal, hands stay on the keyboard
-- **Multimodal ground truth** — screenshot catches UI dialogs and editor state the text buffer misses
-- **Privacy by default** — Whisper transcription runs locally; voice never leaves the machine
-- **Works with any AI** — output is plain text, paste into ChatGPT, Copilot, Claude, Cursor, or any tool
-- **Offline capable** — falls back to Ollama when the cloud service is unreachable
-- **No lock-in** — enhances whatever AI assistant you already use
+- **Zero context-switching** - no manual copy-paste of errors, paths, or branch names
+- **Voice-first** - speak while looking at the terminal, hands stay on the keyboard
+- **Multimodal ground truth** - screenshot catches UI dialogs and editor state the text buffer misses
+- **Privacy by default** - Whisper transcription runs locally; voice never leaves the machine
+- **Works with any AI** - output is plain text, paste into ChatGPT, Copilot, Claude, Cursor, or any tool
+- **Offline capable** - falls back to Ollama when the cloud service is unreachable
+- **No lock-in** - enhances whatever AI assistant you already use
 
 ---
 
@@ -168,7 +168,7 @@ issues faster.
 
 **Output delivered to clipboard:**
 ```
-Fix the TypeScript compilation error TS2345 in src/auth/middleware.ts:42 —
+Fix the TypeScript compilation error TS2345 in src/auth/middleware.ts:42 -
 Argument of type 'string' is not assignable to parameter of type 'AuthToken'.
 The last command `npm run build` failed with exit code 1.
 CWD: ~/project/backend, branch: feature/auth-refactor
@@ -180,69 +180,9 @@ CWD: ~/project/backend, branch: feature/auth-refactor
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph INPUT["1 · Trigger"]
-        HK["Hotkey<br/><i>Ctrl+Alt+E - starts voice + capture</i>"]
-        CLI["CLI<br/><i>prompt-shell enhance 'text'</i>"]
-    end
-
-    subgraph CAPTURE["2 · Multimodal Context Agent"]
-        TM["Terminal State Monitor<br/><i>tmux · iTerm2 · shell hook · generic</i>"]
-        SS["Vision Capture<br/><i>terminal screenshot (PNG)</i>"]
-        VR["Speech-to-Text (Whisper AI)<br/><i>hotkey only . local transcription</i>"]
-    end
-
-    subgraph BUILD["3 · Build"]
-        CB["Context Aggregator<br/><i>error detection · project detection</i>"]
-    end
-
-    subgraph ENHANCE["4 · AI Enhancement"]
-        EC["AI Orchestrator"]
-    end
-
-    subgraph GCP["☁️ Google Cloud AI Platform"]
-        CR["Cloud Run - Serverless API"]
-        PB["Prompt Engineering Engine"]
-        GM["Gemini 2.5 Flash Lite<br/><i>Multimodal AI (text + vision)</i>"]
-    end
-
-    subgraph FALLBACK["Offline AI Fallback"]
-        LLM["Local AI Model<br/><i>Ollama</i>"]
-        TPL["Template Generator"]
-    end
-
-    subgraph OUTPUT["5 · Deliver"]
-        DL["Clipboard · File · iTerm2 Paste<br/><i>+ Desktop Notification</i>"]
-    end
-
-    HK --> TM & SS & VR
-    CLI --> TM & SS
-    CLI -. "text input" .-> CB
-
-    TM --> CB
-    SS --> CB
-    VR --> CB
-
-    CB --> EC
-
-    EC -- "Multimodal API Request" --> CR
-    CR --> PB --> GM
-    GM --> CR
-    CR -- "AI-Enhanced Prompt" --> EC
-
-    EC -. "Cloud Run unreachable" .-> LLM
-    LLM -. "LLM unavailable" .-> TPL
-
-    LLM -- "AI-Enhanced Prompt" --> EC
-    TPL -- "Fallback Prompt" --> EC
-
-    EC --> DL
-```
-
 ![PromptShell Architecture](docs/architecture_diagram.png)
 
-PromptShell runs as a **multimodal AI pipeline** — text, voice, and vision feed
+PromptShell runs as a **multimodal AI pipeline** - text, voice, and vision feed
 into a single agentic context capture step. The AI Orchestrator routes the
 request to **Gemini Vision** on a **serverless Google Cloud backend**, with
 graceful degradation to an **offline AI model** if the cloud is unreachable.
@@ -258,7 +198,7 @@ Full system design: [docs/system_design.md](docs/system_design.md).
 |-----------|-----------|------|
 | **Multimodal AI** | Gemini 2.5 Flash Lite | Prompt enhancement (text + vision) |
 | **AI SDK** | Google GenAI SDK | Gemini API integration |
-| **Cloud Backend** | Google Cloud Run | Serverless hosting — scales to zero |
+| **Cloud Backend** | Google Cloud Run | Serverless hosting - scales to zero |
 | **Speech-to-Text** | Whisper AI (faster-whisper) | Local, private voice transcription |
 | **Local AI Fallback** | Ollama (litellm) | Offline inference when cloud is unreachable |
 | **Terminal Backends** | tmux · iTerm2 · shell hook · generic | Terminal state capture (4 backends) |
@@ -291,29 +231,29 @@ Four pluggable backends, auto-detected at startup in priority order:
 A regex engine scans the terminal output and extracts structured error info
 (type, code, file, line, message) for 12+ error families:
 
-- **Build errors** — TypeScript (`TS*`), ESLint, Rust (`cargo`), Go, Python
-- **Runtime errors** — Node.js stack traces, Python tracebacks, segfaults
-- **Test failures** — Jest, pytest, `cargo test`
-- **Git conflicts** — merge conflict markers
-- **Permission errors** — `EACCES`, sudo prompts
-- **Network errors** — HTTP 4xx/5xx, `ECONNREFUSED`
+- **Build errors** - TypeScript (`TS*`), ESLint, Rust (`cargo`), Go, Python
+- **Runtime errors** - Node.js stack traces, Python tracebacks, segfaults
+- **Test failures** - Jest, pytest, `cargo test`
+- **Git conflicts** - merge conflict markers
+- **Permission errors** - `EACCES`, sudo prompts
+- **Network errors** - HTTP 4xx/5xx, `ECONNREFUSED`
 
 ### Voice Capture and Transcription
 
 - Records from the microphone with energy-based VAD; stops on 1s of silence
 - Three transcription backends (auto-fallback):
-  - **faster-whisper** (local, offline, private) — default
+  - **faster-whisper** (local, offline, private) - default
   - **OpenAI Whisper API** (cloud, most accurate for jargon)
   - **Apple Speech Framework** (macOS native, lowest latency)
 
 ### Screenshot Context (Multimodal)
 
-On each hotkey trigger, PromptShell captures a PNG screenshot of the current screen and attaches it to the Gemini request alongside the text context. This makes the call truly multimodal — Gemini Vision sees the exact terminal state, catching errors and UI details that the text buffer alone may miss.
+On each hotkey trigger, PromptShell captures a PNG screenshot of the current screen and attaches it to the Gemini request alongside the text context. This makes the call truly multimodal - Gemini Vision sees the exact terminal state, catching errors and UI details that the text buffer alone may miss.
 
-- **macOS** — uses the built-in `screencapture` (no install needed)
-- **Linux/GNOME** — uses `gnome-screenshot` (`sudo apt install gnome-screenshot`)
-- **Linux/Wayland (wlroots)** — uses `grim` (`sudo apt install grim`)
-- **Linux/X11** — uses `scrot` (`sudo apt install scrot`)
+- **macOS** - uses the built-in `screencapture` (no install needed)
+- **Linux/GNOME** - uses `gnome-screenshot` (`sudo apt install gnome-screenshot`)
+- **Linux/Wayland (wlroots)** - uses `grim` (`sudo apt install grim`)
+- **Linux/X11** - uses `scrot` (`sudo apt install scrot`)
 
 Disable in config if not needed:
 ```yaml
@@ -331,11 +271,11 @@ terminal:
 
 | Method | Description |
 |--------|-------------|
-| `clipboard` | Copies to system clipboard — `pbcopy` (macOS), `xclip` / `wl-copy` (Linux). Default. |
+| `clipboard` | Copies to system clipboard - `pbcopy` (macOS), `xclip` / `wl-copy` (Linux). Default. |
 | `iterm_paste` | Pastes directly into the active iTerm2 session (macOS only). |
 | `file` | Writes the prompt to `~/.prompt-shell/last_prompt.txt`. Useful for SSH/headless environments. |
 
-**File delivery** — read or pipe the output from another terminal:
+**File delivery** - read or pipe the output from another terminal:
 
 ```bash
 cat ~/.prompt-shell/last_prompt.txt
@@ -352,7 +292,7 @@ cat ~/.prompt-shell/last_prompt.txt | aichat
 | `Esc` | Cancel ongoing voice capture |
 
 > Customize hotkeys in `~/.prompt-shell/config.yaml` under the `hotkeys:` key.
-> Avoid `Ctrl+Shift+E` — reserved by GNOME/GTK for Unicode input.
+> Avoid `Ctrl+Shift+E` - reserved by GNOME/GTK for Unicode input.
 
 ### CLI Reference
 
@@ -384,7 +324,7 @@ journalctl --user -u prompt-shell -f    # Follow logs
 
 ### Security
 
-- Screen buffer is held in memory only — never persisted to disk
+- Screen buffer is held in memory only - never persisted to disk
 - All transcription is local by default (faster-whisper); cloud APIs are opt-in
 - `GEMINI_API_KEY` is read from the environment variable only; never stored in config files
 - Environment variable substitution (`${VAR}`) is supported in config
@@ -427,7 +367,7 @@ See [`config.example.yaml`](config.example.yaml) for all available options with 
 ## Google Cloud Deployment
 
 The enhancement service runs on **Cloud Run** with **Gemini 2.5 Flash Lite** via the
-**Google GenAI SDK**. It scales to zero when idle — cost is effectively **$0/month**
+**Google GenAI SDK**. It scales to zero when idle - cost is effectively **$0/month**
 at personal/demo scale.
 
 ### Automatic deployment (recommended)
@@ -438,7 +378,7 @@ Pushing a version tag triggers the full release pipeline:
 # 1. Bump version in pyproject.toml, then commit
 git commit -m "chore: bump version to 0.2.0"
 
-# 2. Tag and push — pipeline handles the rest
+# 2. Tag and push - pipeline handles the rest
 git tag v0.2.0
 git push origin v0.2.0
 ```
@@ -469,7 +409,7 @@ bash deploy.sh
 
 ### Manual re-deploy (without a new release)
 
-To redeploy without bumping the version — e.g. after a secret rotation:
+To redeploy without bumping the version - e.g. after a secret rotation:
 
 **GitHub → Actions → Deploy to Cloud Run (Manual) → Run workflow**
 
@@ -515,7 +455,7 @@ uv run ruff format src/ tests/
 uv run pytest tests/ -v --tb=short
 ```
 
-See [AGENTS.md](AGENTS.md) for the full contribution guide, branch conventions,
+See [docs/development-guide.md](docs/development-guide.md) for the full contribution guide, branch conventions,
 and cross-platform notes.
 
 ---
@@ -527,7 +467,7 @@ and cross-platform notes.
 | No audio captured | Check microphone permissions (macOS: System Settings → Privacy → Microphone) |
 | `portaudio` not found | `sudo apt install portaudio19-dev` (Linux) |
 | Hotkey not triggering | Run `prompt-shell start` with `sudo` on Linux (required for global keyboard events) |
-| Cloud Run returns 404 | Model name mismatch — verify `gemini-2.5-flash-lite` in your config and redeploy |
+| Cloud Run returns 404 | Model name mismatch - verify `gemini-2.5-flash-lite` in your config and redeploy |
 | `shell_hook` not working | Run `prompt-shell install-hook` then restart your shell |
 | Clipboard empty after enhance | Check `delivery.method: clipboard` in config; try `delivery.method: file` as a fallback |
 
@@ -537,12 +477,13 @@ and cross-platform notes.
 
 | Document | Description |
 |----------|-------------|
-| [AGENTS.md](AGENTS.md) | Development guide — prerequisites, build/test/lint, branch conventions, contribution workflow |
-| [docs/system_design.md](docs/system_design.md) | Full system design — Mermaid diagrams for architecture, pipeline sequence, data models, CI/CD |
+| [docs/development-guide.md](docs/development-guide.md) | Development guide - prerequisites, build/test/lint, branch conventions, contribution workflow |
+| [docs/system_design.md](docs/system_design.md) | Full system design - Mermaid diagrams for architecture, pipeline sequence, data models, CI/CD |
 | [docs/architecture.md](docs/architecture.md) | ASCII architecture diagrams, module layout, data flow, error handling strategy, performance budget |
-| [docs/deployment.md](docs/deployment.md) | End-to-end deployment guide — GCP setup, GitHub secrets, release pipeline, rollback, cost breakdown |
-| [docs/spec.md](docs/spec.md) | Technical specification — problem statement, requirements, API design, data models |
-| [docs/article.md](docs/article.md) | Published article — "I Built a Voice-Activated Prompt Enhancer That Reads Your Terminal" |
+| [docs/deployment.md](docs/deployment.md) | End-to-end deployment guide - GCP setup, GitHub secrets, release pipeline, rollback, cost breakdown |
+| [docs/spec.md](docs/spec.md) | Technical specification - problem statement, requirements, API design, data models |
+| [docs/article.md](docs/article.md) | Published article - "I Built a Voice-Activated Prompt Enhancer That Reads Your Terminal" |
+| [docs/future_scope.md](docs/future_scope.md) | Future scope - 10 planned features, 12 scalability and architectural improvements |
 | [config.example.yaml](config.example.yaml) | Annotated configuration template with all available options |
 
 ---
