@@ -26,6 +26,7 @@ using the **Google GenAI SDK** with multimodal (text + screenshot) input.
 - [Why PromptShell](#why-promptshell)
 - [How It Works](#how-it-works)
 - [Architecture](#architecture)
+- [Tech Stack](#tech-stack)
 - [Features](#features)
 - [Configuration](#configuration)
 - [Google Cloud Deployment](#google-cloud-deployment)
@@ -248,6 +249,22 @@ graceful degradation to an **offline AI model** if the cloud is unreachable.
 Everything except the Gemini call runs on-device.
 
 Full system design: [docs/system_design.md](docs/system_design.md).
+
+---
+
+## Tech Stack
+
+| Component | Technology | Role |
+|-----------|-----------|------|
+| **Multimodal AI** | Gemini 2.5 Flash Lite | Prompt enhancement (text + vision) |
+| **AI SDK** | Google GenAI SDK | Gemini API integration |
+| **Cloud Backend** | Google Cloud Run | Serverless hosting — scales to zero |
+| **Speech-to-Text** | Whisper AI (faster-whisper) | Local, private voice transcription |
+| **Local AI Fallback** | Ollama (litellm) | Offline inference when cloud is unreachable |
+| **Terminal Backends** | tmux · iTerm2 · shell hook · generic | Terminal state capture (4 backends) |
+| **Vision Capture** | screencapture · grim · scrot | Terminal screenshot for Gemini Vision |
+| **CLI Framework** | Typer + Rich | CLI interface and hotkey daemon |
+| **Language** | Python 3.11+ | Cross-platform (macOS + Linux) |
 
 ---
 

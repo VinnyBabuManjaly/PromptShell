@@ -67,32 +67,24 @@
 
 ## [2:15–3:00] HOW IT WORKS — Architecture (45s)
 
-> Here's what happens under the hood.                                                                                                         
-   
+> Here's what happens under the hood.
 > The Multimodal Context Agent launches three captures concurrently — the Terminal State Monitor grabs the screen buffer, Vision Capture takes
 > a screenshot, and Speech-to-Text powered by Whisper AI transcribes your voice locally. Your voice never leaves your machine.               
-
 > The Context Aggregator assembles everything — errors, project type, git branch, screenshot —everything into a single payload.
-
 > The AI Orchestrator sends a Multimodal API Request to the Google Cloud AI Platform — Cloud Run runs the Prompt Engineering Engine, which
 > feeds both text and screenshot to Gemini 2.5 Flash Lite as multimodal input. Back comes the AI-Enhanced Prompt.
-
 > If Cloud Run is unreachable, the Offline AI Fallback kicks in — local model first, then a template. You always get output.
-
 > Result lands in your clipboard. Done.
 ---
 
 ## [3:00–3:30] THE NUMBERS — Why It Matters (30s)
 
 > Let's talk about what this actually saves.
-
-**[On screen]:** Show the token comparison table from README.
-
-> Without PromptShell, a typical debugging session takes 3 to 5 rounds with your AI assistant. That's 3,000 to 5,000 tokens burned before you get a useful answer.
+> Without PromptShell, fixing one error takes 3 to 5 rounds of back-and-forth — thousands of tokens wasted before you get a useful answer.
 >
-> With PromptShell — **one round. About 1,100 tokens. 60 to 75% fewer tokens.**
->
-> At scale, that's roughly **$540 per developer per year** in API credits saved. But honestly, the bigger win is the time. No context switching. No manual copy-paste. Speak and get a precise prompt in two seconds.
+> With PromptShell — one round. 60 to 75% fewer tokens. That's roughly $540 per developer per year saved in API credits alone.                
+>   
+> But the real win is the time. Speak, and get a precise prompt in two seconds.
 
 ---
 
@@ -100,14 +92,19 @@
 
 > To recap the stack:
 >
-> - **Gemini 2.5 Flash Lite** for multimodal prompt enhancement
-> - **Google Cloud Run** for serverless hosting — scales to zero, costs nothing at rest
-> - **Google GenAI SDK** for the Gemini API integration
-> - **faster-whisper** for private, local voice transcription
-> - Four terminal backends — works in tmux, iTerm2, any shell with the hook, or generically on any terminal
-> - Clipboard delivery that works on macOS and Linux
+> - **Gemini 2.5 Flash Lite** — Multimodal AI for prompt enhancement via the **Google GenAI SDK**
 >
-> It's open source. Install with `pip install prompt-shell`.
+> - **Google Cloud Run** — serverless, scales to zero, costs nothing at rest
+>
+> - **Whisper AI** — private, local speech-to-text transcription
+>
+> - **Multimodal Context Agent** — four terminal backends, vision capture, voice — all concurrent
+>
+> - **Offline AI Fallback** — Ollama for local inference when the cloud is unreachable
+>
+> - Cross-platform — macOS and Linux, clipboard and file delivery
+>
+> It's open source and install with pip.
 
 ---
 
