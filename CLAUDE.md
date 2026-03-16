@@ -39,7 +39,7 @@ uv run prompt-shell context
 
 ## Architecture
 
-The pipeline is: **hotkey → terminal snapshot → voice/clipboard → context build → HTTP POST to Cloud Run → Gemini 2.0 Flash → clipboard delivery**.
+The pipeline is: **hotkey → terminal snapshot → voice/clipboard → context build → HTTP POST to Cloud Run → Gemini 2.5 Flash Lite → clipboard delivery**.
 
 The system is split into two parts: a **local client** (daemon) and a **Cloud Run enhancement service** (Google Cloud).
 
@@ -66,7 +66,7 @@ Local client (src/prompt_shell/)
 Cloud Run service (cloud_run_service/)
 ├── main.py                  # FastAPI app: POST /enhance, GET /health
 ├── prompt_builder.py        # Meta-prompt template renderer
-├── gemini_client.py         # google-genai SDK wrapper (Gemini 2.0 Flash)
+├── gemini_client.py         # google-genai SDK wrapper (Gemini 2.5 Flash Lite)
 ├── Dockerfile               # Cloud Run container image
 └── requirements.txt         # fastapi, uvicorn, google-genai, pydantic
 ```
@@ -83,7 +83,7 @@ Cloud Run service (cloud_run_service/)
 
 Runtime config is loaded from `~/.prompt-shell/config.yaml` (or `XDG_CONFIG_HOME`). See `config.example.yaml` for all options. Environment variable substitution is supported (e.g., `api_key: ${GEMINI_API_KEY}`).
 
-Default stack: Gemini 2.0 Flash on Cloud Run, faster-whisper base.en (local), clipboard delivery.
+Default stack: Gemini 2.5 Flash Lite on Cloud Run, faster-whisper base.en (local), clipboard delivery.
 Offline fallback: Ollama + llama3.2:8b (local).
 
 ### Deployment

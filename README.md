@@ -5,7 +5,7 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-> **"Great developers don’t write great prompts - they write great code. PromptShell handles the rest."**
+> **"Great developers write great code, not great prompts. Just say 'fix it' - PromptShell sees your terminal and does the rest."**
 
 A voice-activated, terminal-aware prompt enhancer for AI coding assistants.
 Press a hotkey, speak a vague command like *"fix the error"* - PromptShell

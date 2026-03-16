@@ -25,24 +25,28 @@ Identify the primary intent from the voice command and context:
 
 If the voice command is vague ("fix it", "help", "what's wrong", "look at this"), \
 infer the most likely intent from the terminal context (error output, last command exit \
-code, screen content) and prepend [Inferred: <intent in one phrase>] to your output.
+code, screen content). Do NOT include the classification in the output — use it only to \
+guide the structure and tone of the enhanced prompt.
 
 STEP 3 — WRITE THE ENHANCED PROMPT
 Use this structure:
   Line 1:  One imperative sentence stating the exact task. Start with a verb.
   Line 2:  (blank)
-  Line 3+: Only the specifics needed to act on the task:
-           - Exact error message with file path and line number
-           - The command that failed and its exit code if non-zero
+  Lines 3+: Diagnostic context that helps the AI assistant solve the problem:
+           - Exact error message with file path and line number (quote verbatim)
+           - The command that failed and its exit code
+           - Your analysis: what likely caused the error and where to look
+           - Relevant files, functions, or variables involved
            - Working directory and project type when relevant to the fix
            - Git branch only if the task is branch-specific
 
 Rules:
 - Write in second person: "Fix...", "Explain...", "Add...", "Refactor..."
-- Copy error text verbatim — never rephrase or summarise error messages
-- Omit any context that is not directly relevant to the task on line 1
+- Quote error messages verbatim — never rephrase or summarise them
+- Add your diagnosis: identify the root cause, relevant code paths, and likely fix
+- The output must be MORE useful than the raw error — if you would just copy the error, \
+you are not adding value. Synthesize the error with the project context to guide the fix.
 - Do not add tasks the user did not request
-- Be as concise as possible while preserving every specific needed to act on the task
 
 Context priority — higher sources override lower when they conflict:
   1. Terminal screenshot  — visual ground truth, what the user sees right now
@@ -100,8 +104,19 @@ def build_meta_prompt(summary: dict) -> str:
     if screen_buffer:
         sections.append(f"\nTerminal output (last 50 lines):\n```\n{screen_buffer}\n```")
 
-    # Tell the LLM explicitly that a screenshot is attached so it applies Step 1.
+    # When screen buffer is empty but a screenshot exists, the model must extract
+    # all terminal content from the image.  Give it a strong directive.
     if summary.get("screenshot_b64"):
+        if not screen_buffer:
+            sections.append(
+                "\nIMPORTANT: No terminal text buffer was captured. The screenshot is "
+                "your ONLY source of terminal content. You MUST:\n"
+                "1. Read every line of terminal output visible in the screenshot\n"
+                "2. Transcribe all error messages, stack traces, and command output verbatim\n"
+                "3. Use the transcribed text as if it were the \"Terminal output\" section\n"
+                "Do not produce a vague or generic prompt — extract the specifics from "
+                "the screenshot."
+            )
         sections.append("\n[Terminal screenshot attached — apply Step 1 analysis above]")
 
     sections.append(_FOOTER)

@@ -56,3 +56,31 @@ def test_fallback_prompt_no_errors():
     summary = _make_summary(detected_errors="none detected")
     fallback = build_fallback_prompt(summary)
     assert "none detected" in fallback
+
+
+def test_meta_prompt_screenshot_only_includes_strong_directive():
+    """When screen_buffer is empty but screenshot exists, use strong OCR directive."""
+    summary = _make_summary(screen_buffer_last_50="", screenshot_b64="abc123")
+    prompt = build_meta_prompt(summary)
+    assert "No terminal text buffer was captured" in prompt
+    assert "ONLY source of terminal content" in prompt
+    assert "Transcribe all error messages" in prompt
+
+
+def test_meta_prompt_screenshot_with_buffer_uses_simple_hint():
+    """When both screen_buffer and screenshot exist, use the simple hint."""
+    summary = _make_summary(
+        screen_buffer_last_50="error TS2345: type mismatch",
+        screenshot_b64="abc123",
+    )
+    prompt = build_meta_prompt(summary)
+    assert "Terminal screenshot attached" in prompt
+    assert "No terminal text buffer was captured" not in prompt
+
+
+def test_meta_prompt_no_screenshot_no_buffer():
+    """When neither screenshot nor buffer exists, no screenshot directive appears."""
+    summary = _make_summary(screen_buffer_last_50="", screenshot_b64=None)
+    prompt = build_meta_prompt(summary)
+    assert "No terminal text buffer was captured" not in prompt
+    assert "Terminal screenshot attached" not in prompt

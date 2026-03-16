@@ -1,4 +1,4 @@
-"""Cloud Run enhancement service — FastAPI + Gemini 2.0 Flash."""
+"""Cloud Run enhancement service — FastAPI + Gemini 2.5 Flash Lite."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="PromptShell Enhancement Service",
-    description="Enhances developer prompts using Gemini 2.0 Flash",
+    description="Enhances developer prompts using Gemini 2.5 Flash Lite",
     version="0.1.0",
     lifespan=lifespan,
 )
