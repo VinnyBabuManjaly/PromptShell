@@ -49,7 +49,7 @@ using the **Google GenAI SDK** with multimodal (text + screenshot) input.
 ### Install
 
 ```bash
-pip install prompt-shell
+pip install prompt-shell-cli
 ```
 
 ### Set up

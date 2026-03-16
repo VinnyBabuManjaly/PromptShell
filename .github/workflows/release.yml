@@ -108,7 +108,7 @@ jobs:
     needs: [build]
     environment:
       name: pypi
-      url: https://pypi.org/project/prompt-shell/
+      url: https://pypi.org/project/prompt-shell-cli/
     permissions:
       id-token: write
     steps:
@@ -164,7 +164,7 @@ jobs:
           echo "## Installation" >> changelog.md
           echo "" >> changelog.md
           echo '```bash' >> changelog.md
-          echo "pip install prompt-shell==${{ needs.validate.outputs.version || github.ref_name }}" >> changelog.md
+          echo "pip install prompt-shell-cli==${{ needs.validate.outputs.version || github.ref_name }}" >> changelog.md
           echo '```' >> changelog.md
 
       - name: Create GitHub Release

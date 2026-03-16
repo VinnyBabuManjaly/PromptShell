@@ -79,7 +79,7 @@ When users interact with AI coding assistants (Devin, Copilot, ChatGPT, etc.) fr
 | # | Backend | Platform | How It Works | Capabilities |
 |---|---------|----------|-------------|--------------|
 | 1 | **tmux** | macOS, Linux | `tmux capture-pane` for screen buffer; `tmux display-message` for CWD, PID, process info | Screen buffer, CWD, running process, command history |
-| 2 | **iterm2** | macOS only | iTerm2 Python API (`iterm2` pip package). Optional dependency: `pip install prompt-shell[iterm2]` | Screen buffer, CWD, last command, exit code, job name |
+| 2 | **iterm2** | macOS only | iTerm2 Python API (`iterm2` pip package). Optional dependency: `pip install prompt-shell-cli[iterm2]` | Screen buffer, CWD, last command, exit code, job name |
 | 3 | **shell_hook** | macOS, Linux | Lightweight precmd/preexec hook installed in the user's shell (zsh/bash/fish). Writes CWD, last command, and exit code to a state file (`~/.prompt-shell/shell_state.json`) | CWD, last command, exit code (no screen buffer) |
 | 4 | **generic** | macOS, Linux | Reads shell history files (`~/.zsh_history`, `~/.bash_history`, `~/.local/share/fish/fish_history`). Detects CWD via `/proc/PID/cwd` (Linux) or `lsof -p PID` (macOS) | CWD, command history (no screen buffer) |
 
@@ -91,7 +91,7 @@ When users interact with AI coding assistants (Devin, Copilot, ChatGPT, etc.) fr
 
 **Requirements by Backend**:
 - **tmux**: User must be inside a tmux session.
-- **iterm2**: iTerm2 with Shell Integration installed and Python API enabled. Optional dependency (`pip install prompt-shell[iterm2]`).
+- **iterm2**: iTerm2 with Shell Integration installed and Python API enabled. Optional dependency (`pip install prompt-shell-cli[iterm2]`).
 - **shell_hook**: Hook installed via `prompt-shell install-hook`.
 - **generic**: No special setup. Always available as fallback.
 
@@ -325,7 +325,7 @@ error_patterns:
 |-------|-----------|-----------|
 | Language | **Python 3.11+** | Rich ML/audio ecosystem; iTerm2 API is Python-native |
 | Terminal (tmux) | `subprocess` (tmux CLI) | `tmux capture-pane`, `tmux display-message` — works on any terminal inside tmux |
-| Terminal (iterm2) | `iterm2` (pip, optional) | Official iTerm2 scripting library. Optional: `pip install prompt-shell[iterm2]` |
+| Terminal (iterm2) | `iterm2` (pip, optional) | Official iTerm2 scripting library. Optional: `pip install prompt-shell-cli[iterm2]` |
 | Terminal (shell_hook) | Shell rc files + JSON state | Lightweight precmd/preexec hooks for zsh/bash/fish |
 | Terminal (generic) | Shell history files + `/proc` / `lsof` | Fallback: reads `~/.zsh_history`, `~/.bash_history`, fish history |
 | Audio capture | `sounddevice` + `numpy` | Low-latency, cross-platform audio |

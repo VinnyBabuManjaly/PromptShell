@@ -1,5 +1,5 @@
 [project]
-name = "prompt-shell"
+name = "prompt-shell-cli"
 version = "0.1.0"
 description = "Voice-activated terminal-aware prompt enhancer for AI coding assistants"
 readme = "README.md"
