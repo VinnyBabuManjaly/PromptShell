@@ -179,65 +179,7 @@ CWD: ~/project/backend, branch: feature/auth-refactor
 
 ## Architecture
 
-```mermaid
-flowchart TB
-    subgraph INPUT["1 · Trigger"]
-        HK["Hotkey<br/><i>Ctrl+Alt+E — starts voice + capture</i>"]
-        CLI["CLI<br/><i>prompt-shell enhance 'text'</i>"]
-    end
-
-    subgraph CAPTURE["2 · Capture (concurrent)"]
-        TM["Terminal Monitor<br/><i>tmux · iTerm2 · shell hook · generic</i>"]
-        SS["Screenshot Capture"]
-        VR["Voice Recorder + Transcriber<br/><i>hotkey only — skipped when text provided via CLI</i>"]
-    end
-
-    subgraph BUILD["3 · Build"]
-        CB["Context Builder<br/><i>error detection · project detection</i>"]
-    end
-
-    subgraph ENHANCE["4 · Enhance"]
-        EC["Enhancement Client"]
-    end
-
-    subgraph GCP["☁️ Google Cloud"]
-        CR["Cloud Run — FastAPI"]
-        PB["Meta-Prompt Builder"]
-        GM["Gemini 2.5 Flash Lite<br/><i>multimodal: text + screenshot</i>"]
-    end
-
-    subgraph FALLBACK["Local Fallback"]
-        LLM["Local LLM<br/><i>Ollama</i>"]
-        TPL["Template Generator"]
-    end
-
-    subgraph OUTPUT["5 · Deliver"]
-        DL["Clipboard · File · iTerm2 Paste<br/><i>+ Desktop Notification</i>"]
-    end
-
-    HK --> TM & SS & VR
-    CLI --> TM & SS
-    CLI -. "text input" .-> CB
-
-    TM --> CB
-    SS --> CB
-    VR --> CB
-
-    CB --> EC
-
-    EC -- "HTTP POST /enhance" --> CR
-    CR --> PB --> GM
-    GM --> CR
-    CR -- "enhanced prompt" --> EC
-
-    EC -. "Cloud Run unreachable" .-> LLM
-    LLM -. "LLM unavailable" .-> TPL
-
-    LLM -- "enhanced prompt" --> EC
-    TPL -- "fallback prompt" --> EC
-
-    EC --> DL
-```
+![PromptShell Architecture](docs/architecture_diagram.png)
 
 Everything inside steps 1–5 runs on your machine. The only network call is
 the POST to Cloud Run (step 4). If Cloud Run is unreachable, the Enhancement
