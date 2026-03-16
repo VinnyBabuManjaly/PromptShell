@@ -351,7 +351,7 @@ error_patterns:
 ```
 prompt-shell/
 ├── README.md                        # Project overview and quick start
-├── AGENTS.md                        # Development guide (build/test/deploy)
+├── docs/development-guide.md      # Development guide (build/test/deploy)
 ├── CLAUDE.md                        # Coding standards for AI-assisted development
 ├── pyproject.toml                   # Project metadata & dependencies
 ├── config.example.yaml              # Annotated configuration template

@@ -1,87 +1,65 @@
 # PromptShell — System Design
 
 ## 1. High-Level Architecture
-
 ```mermaid
 flowchart TB
-    subgraph USER["👤 Developer"]
-        HK["Hotkey\nCtrl+Alt+E"]
-        MIC["🎙️ Microphone\n(voice command)"]
-        CB["📋 Clipboard\n(enhanced prompt)"]
+    subgraph INPUT["1 · Trigger"]
+        HK["Hotkey<br/><i>Ctrl+Alt+E - starts voice + capture</i>"]
+        CLI["CLI<br/><i>prompt-shell enhance 'text'</i>"]
     end
 
-    subgraph LOCAL["🖥️  Local Machine  (macOS / Linux)"]
-        direction TB
-
-        subgraph CAPTURE["Context Capture  (concurrent)"]
-            TM["Terminal Monitor\n4 backends"]
-            SC["Screenshot Capture\ngrim / scrot / screencapture"]
-            VC["Voice Capture\nsounddevice + VAD"]
-            TR["Transcription\nfaster-whisper (local)"]
-        end
-
-        subgraph CORE["Core Pipeline"]
-            ED["Error Detection Engine\n12+ regex pattern families"]
-            PD["Project Detector\npackage.json / Cargo.toml / go.mod …"]
-            CB2["Context Builder\n→ ContextPayload"]
-            EC["Enhancement Client\nhttpx async POST"]
-        end
-
-        subgraph FALLBACK["Local Fallback"]
-            LC["LLM Client\nlitellm → Ollama / OpenAI / Anthropic"]
-            TPL["Template Builder\n(no LLM)"]
-        end
-
-        subgraph DELIVER["Delivery"]
-            DEL["Delivery Engine"]
-            NOTIF["Notification\nosascript / notify-send"]
-        end
+    subgraph CAPTURE["2 · Multimodal Context Agent"]
+        TM["Terminal State Monitor<br/><i>tmux · iTerm2 · shell hook · generic</i>"]
+        SS["Vision Capture<br/><i>terminal screenshot (PNG)</i>"]
+        VR["Speech-to-Text (Whisper AI)<br/><i>hotkey only . local transcription</i>"]
     end
 
-    subgraph GCP["☁️  Google Cloud Platform"]
-        subgraph CR["Cloud Run Service"]
-            API["FastAPI\nPOST /enhance\nGET /health"]
-            PB["Meta-Prompt Builder\n3-step template"]
-            GC["Google GenAI SDK\ngoogle-genai"]
-        end
-        GEMINI["✨ Gemini 2.5 Flash Lite\n(multimodal: text + image)"]
-        SM["Secret Manager\nGEMINI_API_KEY"]
-        AR["Artifact Registry\nDocker image"]
+    subgraph BUILD["3 · Build"]
+        CB["Context Aggregator<br/><i>error detection · project detection</i>"]
     end
 
-    HK -->|trigger| CAPTURE
-    MIC -->|audio stream| VC
-    VC --> TR
-    TM -->|TerminalState| CB2
-    SC -->|PNG base64| CB2
-    TR -->|transcript| CB2
-    ED -->|DetectedError[]| CB2
-    PD -->|ProjectInfo| CB2
-    TM --> ED
-    TM --> PD
+    subgraph ENHANCE["4 · AI Enhancement"]
+        EC["AI Orchestrator"]
+    end
 
-    CB2 -->|ContextPayload JSON| EC
-    EC -->|HTTP POST /enhance| API
-    API --> PB
-    PB -->|meta-prompt + screenshot| GC
-    GC -->|contents| GEMINI
-    GEMINI -->|enhanced prompt| GC
-    GC --> API
-    API -->|enhanced_prompt| EC
+    subgraph GCP["☁️ Google Cloud AI Platform"]
+        CR["Cloud Run - Serverless API"]
+        PB["Prompt Engineering Engine"]
+        GM["Gemini 2.5 Flash Lite<br/><i>Multimodal AI (text + vision)</i>"]
+    end
 
-    EC -->|Cloud Run unreachable?| LC
-    LC -->|LLM unavailable?| TPL
+    subgraph FALLBACK["Offline AI Fallback"]
+        LLM["Local AI Model<br/><i>Ollama</i>"]
+        TPL["Template Generator"]
+    end
 
-    EC --> DEL
-    LC --> DEL
-    TPL --> DEL
-    DEL --> CB
-    DEL --> NOTIF
+    subgraph OUTPUT["5 · Deliver"]
+        DL["Clipboard · File · iTerm2 Paste<br/><i>+ Desktop Notification</i>"]
+    end
 
-    SM -.->|API key at deploy| CR
-    AR -.->|container image| CR
+    HK --> TM & SS & VR
+    CLI --> TM & SS
+    CLI -. "text input" .-> CB
+
+    TM --> CB
+    SS --> CB
+    VR --> CB
+
+    CB --> EC
+
+    EC -- "Multimodal API Request" --> CR
+    CR --> PB --> GM
+    GM --> CR
+    CR -- "AI-Enhanced Prompt" --> EC
+
+    EC -. "Cloud Run unreachable" .-> LLM
+    LLM -. "LLM unavailable" .-> TPL
+
+    LLM -- "AI-Enhanced Prompt" --> EC
+    TPL -- "Fallback Prompt" --> EC
+
+    EC --> DL
 ```
-
 ---
 
 ## 2. End-to-End Pipeline Sequence
@@ -90,25 +68,25 @@ flowchart TB
 sequenceDiagram
     actor User
     participant HK as Hotkey Daemon
-    participant SC as Screenshot Capture
-    participant VC as Voice Capture
-    participant TR as Transcription
-    participant TM as Terminal Monitor
-    participant CB as Context Builder
-    participant EC as Enhancement Client
-    participant CR as Cloud Run
-    participant GM as Gemini 2.5 Flash Lite
+    participant SC as Vision Capture
+    participant VC as Speech-to-Text
+    participant TR as Whisper AI
+    participant TM as Terminal State Monitor
+    participant CB as Context Aggregator
+    participant EC as AI Orchestrator
+    participant CR as Cloud Run (Serverless API)
+    participant GM as Gemini 2.5 Flash Lite (Multimodal AI)
     participant DL as Delivery Engine
 
     User->>HK: Ctrl+Alt+E
 
     par Concurrent capture
-        HK->>SC: capture_screenshot()
-        Note over SC: grim / scrot / screencapture
+        HK->>TM: snapshot()
+        Note over TM: tmux / iTerm2 / shell_hook / generic
+        HK->>SC: capture_screenshot_b64()
+        Note over SC: screencapture / grim / scrot
         HK->>VC: start_recording()
         Note over VC: sounddevice 16kHz mono
-        HK->>TM: snapshot()
-        Note over TM: tmux / iterm2 / shell_hook / generic
     end
 
     User->>VC: speaks "fix the error"
@@ -116,28 +94,35 @@ sequenceDiagram
     VC->>TR: raw audio frames
     TR-->>VC: transcript: "fix the error"
 
-    SC-->>CB: screenshot_b64 (PNG, base64)
     TM-->>CB: TerminalState
+    SC-->>CB: screenshot_b64 (PNG)
     VC-->>CB: voice_transcript
 
     CB->>CB: detect_errors(screen_buffer)
     CB->>CB: detect_project(cwd)
-    CB-->>EC: ContextPayload
+    CB-->>EC: summary dict
 
-    EC->>CR: POST /enhance (JSON)
-    Note over EC,CR: {voice_transcript, cwd, screen_buffer,<br/>detected_errors, screenshot_b64, ...}
+    EC->>CR: Multimodal API Request (JSON)
+    Note over EC,CR: voice_transcript, cwd, screen_buffer,<br/>detected_errors, screenshot_b64, ...
 
-    CR->>CR: build_meta_prompt(payload)
+    CR->>CR: Prompt Engineering Engine
     Note over CR: Step 1: read screenshot<br/>Step 2: classify intent<br/>Step 3: write enhanced prompt
 
     CR->>GM: generate_content([text_part, image_part])
     GM-->>CR: enhanced prompt text
 
-    CR-->>EC: {"enhanced_prompt": "Fix TypeScript..."}
-    EC-->>DL: enhanced_prompt
+    CR-->>EC: AI-Enhanced Prompt
 
-    DL->>User: pbcopy / wl-copy → clipboard
-    DL->>User: desktop notification (preview)
+    alt Cloud Run unreachable
+        EC->>EC: fall back to Local AI Model (Ollama)
+        alt LLM unavailable
+            EC->>EC: fall back to Template Generator
+        end
+    end
+
+    EC-->>DL: enhanced_prompt
+    DL->>User: clipboard (pbcopy / wl-copy)
+    DL->>User: desktop notification
 ```
 
 ---
@@ -148,31 +133,28 @@ sequenceDiagram
 flowchart TD
     START([Daemon Startup]) --> PROBE
 
-    PROBE["BackendDetector\nprobes in order"]
+    PROBE["detect_backend()<br/>probes in priority order"]
 
-    PROBE --> T1{"tmux running?\n$TMUX set?"}
-    T1 -->|Yes| TMUX["TmuxBackend\n✓ screen buffer\n✓ CWD\n✓ commands\n✓ exit codes via hook"]
+    PROBE --> T1{"$TMUX set<br/>and tmux binary exists?"}
+    T1 -->|Yes| TMUX["TmuxBackend<br/>✓ screen buffer<br/>✓ CWD<br/>✓ commands<br/>✓ exit codes via hook"]
     T1 -->|No| T2
 
-    T2{"iTerm2 running?\niterm2 pkg installed?"}
-    T2 -->|Yes| ITERM["ITerm2Backend\n✓ screen buffer\n✓ CWD\n✓ commands\n✓ exit codes\n⚠ macOS only"]
+    T2{"macOS + iTerm2<br/>+ iterm2 pkg installed?"}
+    T2 -->|Yes| ITERM["ITerm2Backend<br/>✓ screen buffer<br/>✓ CWD<br/>✓ commands<br/>✓ exit codes"]
     T2 -->|No| T3
 
-    T3{"shell_state.json\nexists?"}
-    T3 -->|Yes| HOOK["ShellHookBackend\n✗ screen buffer\n✓ CWD\n✓ commands\n✓ exit codes"]
+    T3{"state-PID.json<br/>exists in STATE_DIR?"}
+    T3 -->|Yes| HOOK["ShellHookBackend<br/>✗ screen buffer<br/>✓ CWD<br/>✓ commands<br/>✓ exit codes"]
     T3 -->|No| T4
 
-    T4["GenericBackend\n✗ screen buffer\n✓ CWD (proc/lsof)\n✓ history\n✗ exit codes\n(always available)"]
+    T4["GenericBackend<br/>✗ screen buffer<br/>✓ CWD (proc/lsof)<br/>✓ history<br/>✗ exit codes<br/>(always available)"]
 
-    TMUX --> POLL
-    ITERM --> POLL
-    HOOK --> POLL
-    T4 --> POLL
+    TMUX --> SNAP
+    ITERM --> SNAP
+    HOOK --> SNAP
+    T4 --> SNAP
 
-    POLL["Poll every 2s\n→ TerminalState cache"]
-    POLL --> TRIG{"hotkey\ntrigger?"}
-    TRIG -->|Yes| SNAP["snapshot() →\nfrozen TerminalState"]
-    TRIG -->|No| POLL
+    SNAP["snapshot()<br/>→ frozen TerminalState"]
 ```
 
 ---
@@ -181,28 +163,28 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    subgraph INPUT["ContextPayload"]
-        VT["voice_transcript\n'fix the error'"]
-        SB["screen_buffer\n(last 50 lines)"]
-        DE["detected_errors\nTS2345 src/auth.ts:42"]
-        CWD["cwd / git_branch\nproject_type"]
-        SS["screenshot_b64\nPNG base64"]
+    subgraph INPUT["ContextPayload (summary dict)"]
+        VT["voice_transcript<br/>'fix the error'"]
+        SB["screen_buffer_last_50<br/>(last 50 lines)"]
+        DE["detected_errors<br/>TS2345 src/auth.ts:42"]
+        CWD["cwd · git_branch<br/>project_type"]
+        SS["screenshot_b64<br/>PNG base64"]
     end
 
-    subgraph BUILDER["Meta-Prompt Builder"]
-        S1["STEP 1\nRead screenshot\nas ground truth"]
-        S2["STEP 2\nClassify intent\nfix_error / explain /\nrefactor / add_feature /\nwrite_test / debug"]
-        S3["STEP 3\nWrite enhanced prompt\nimperative sentence\n+ exact specifics"]
+    subgraph BUILDER["Prompt Engineering Engine (Cloud Run)"]
+        S1["STEP 1<br/>Read screenshot<br/>as ground truth"]
+        S2["STEP 2<br/>Classify intent<br/>fix_error / explain /<br/>refactor / add_feature /<br/>write_test / debug"]
+        S3["STEP 3<br/>Write enhanced prompt<br/>imperative sentence<br/>+ exact specifics"]
     end
 
     subgraph GENAI["Google GenAI SDK"]
-        P1["Part.from_text\n(meta-prompt)"]
-        P2["Part.from_bytes\n(PNG image)\nmime_type=image/png"]
-        REQ["client.models\n.generate_content(\n  model,\n  contents=[P1, P2]\n)"]
+        P1["Part.from_text<br/>(meta-prompt)"]
+        P2["Part.from_bytes<br/>(PNG image)<br/>mime_type=image/png"]
+        REQ["client.models<br/>.generate_content(<br/>  model,<br/>  contents=[P1, P2]<br/>)"]
     end
 
-    subgraph OUTPUT["Enhanced Prompt"]
-        EP["Fix the TypeScript error TS2345\nin src/auth/middleware.ts:42 —\nArgument of type 'string' is not\nassignable to parameter of type\n'AuthToken'.\nCommand: npm run build (exit 1)\nBranch: feature/auth-refactor"]
+    subgraph OUTPUT["Response"]
+        EP["AI-Enhanced Prompt<br/>(plain text string)"]
     end
 
     INPUT --> BUILDER
@@ -219,27 +201,27 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    BUF["screen_buffer\n(raw terminal text)"]
+    BUF["screen_buffer<br/>(raw terminal text)"]
 
-    BUF --> EDE["ErrorDetectionEngine\n.detect(screen_buffer)"]
+    BUF --> EDE["ErrorDetectionEngine<br/>.detect(screen_buffer)"]
 
-    EDE --> R1["TypeScript\nTS\\d+ error"]
-    EDE --> R2["Python Traceback\nTraceback (most recent call last)"]
-    EDE --> R3["Rust compiler\nerror\\[E\\d+\\]"]
-    EDE --> R4["Go\n\\.go:\\d+:\\d+:"]
-    EDE --> R5["Node.js\n(TypeError|ReferenceError)"]
-    EDE --> R6["Jest / pytest\nFAILED | FAILED test"]
-    EDE --> R7["ESLint\nError: .* rule"]
-    EDE --> R8["Git conflict\n<<<<<<< HEAD"]
-    EDE --> R9["Permission\n(EACCES|Permission denied)"]
-    EDE --> R10["Segfault\nSegmentation fault"]
-    EDE --> R11["cargo test\ntest .* FAILED"]
-    EDE --> R12["HTTP / network\n(404|500|ECONNREFUSED)"]
+    EDE --> R1["TypeScript<br/>TS\\d+ error"]
+    EDE --> R2["Python Traceback<br/>Traceback (most recent call last)"]
+    EDE --> R3["Rust compiler<br/>error\\[E\\d+\\]"]
+    EDE --> R4["Go<br/>\\.go:\\d+:\\d+:"]
+    EDE --> R5["Node.js<br/>(TypeError|ReferenceError)"]
+    EDE --> R6["Jest / pytest<br/>FAILED | FAILED test"]
+    EDE --> R7["ESLint<br/>Error: .* rule"]
+    EDE --> R8["Git conflict<br/><<<<<<< HEAD"]
+    EDE --> R9["Permission<br/>(EACCES|Permission denied)"]
+    EDE --> R10["Segfault<br/>Segmentation fault"]
+    EDE --> R11["cargo test<br/>test .* FAILED"]
+    EDE --> R12["HTTP / network<br/>(404|500|ECONNREFUSED)"]
 
     R1 & R2 & R3 & R4 & R5 & R6 & R7 & R8 & R9 & R10 & R11 & R12 --> OUT
 
-    OUT["DetectedError[]\n{error_type, code, file, line, message}"]
-    OUT --> CB["Context Builder\n→ ContextPayload.detected_errors"]
+    OUT["DetectedError[]<br/>{error_type, code, file, line, column, message, severity}"]
+    OUT --> CB["Context Aggregator<br/>→ ContextPayload.detected_errors"]
 ```
 
 ---
@@ -248,29 +230,28 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    START["Enhancement Request"] --> CR
+    START["AI Orchestrator<br/>enhance_with_fallback()"] --> HAS_URL
 
-    CR{"Cloud Run\nreachable?"}
-    CR -->|Yes, 2xx| OK["✅ Gemini-enhanced prompt\n(multimodal, structured)"]
-    CR -->|No / 5xx| RETRY["Retry once\n(exponential backoff)"]
-    RETRY --> CR2{"Retry\nsucceeded?"}
-    CR2 -->|Yes| OK
-    CR2 -->|No| LOCAL
+    HAS_URL{"provider == gemini<br/>and cloud_run_url set?"}
+    HAS_URL -->|Yes| CR["Multimodal API Request<br/>to Cloud Run"]
+    HAS_URL -->|No| LOCAL
 
-    LOCAL{"Local LLM\nconfigured?\n(litellm)"}
-    LOCAL -->|Yes| OLLAMA["🦙 Local LLM\n(Ollama / llama3.2:8b)\nor OpenAI / Anthropic"]
-    LOCAL -->|No| TPL
+    CR --> CROK{"Cloud Run<br/>responded 2xx?"}
+    CROK -->|Yes| OK["✅ Gemini AI-Enhanced Prompt<br/>(multimodal, structured)"]
+    CROK -->|No| LOCAL["Local AI Model<br/>Ollama via litellm"]
 
-    OLLAMA --> OLLOK{"LLM\nresponded?"}
-    OLLOK -->|Yes| OK2["✅ Local LLM-enhanced prompt\n(no cloud dependency)"]
-    OLLOK -->|No| TPL
+    LOCAL --> LLMOK{"LLM responded<br/>after retries?"}
+    LLMOK -->|Yes| OK2["✅ Local AI-Enhanced Prompt"]
+    LLMOK -->|No| TPL
 
-    TPL["📄 Template fallback\nbuild_fallback_prompt(summary)\nno LLM required"]
-    TPL --> OK3["✅ Template prompt\n(always succeeds)"]
+    TPL["📄 Template Generator<br/>build_fallback_prompt(summary)<br/>always succeeds"]
+    TPL --> OK3["✅ Fallback Prompt"]
 
-    OK --> DEL["Delivery Engine\n→ Clipboard + Notification"]
-    OK2 --> DEL
-    OK3 --> DEL
+    OK --> EC["AI Orchestrator<br/>returns EnhanceResult"]
+    OK2 --> EC
+    OK3 --> EC
+
+    EC --> DEL["Delivery Engine<br/>→ Clipboard + Notification"]
 ```
 
 ---
@@ -280,33 +261,31 @@ flowchart TD
 ```mermaid
 flowchart LR
     subgraph DEV["Developer"]
-        CODE["git commit"]
-        TAG["git tag v0.x.x\ngit push origin v0.x.x"]
+        TAG["git tag v0.x.x<br/>git push origin v0.x.x"]
     end
 
-    subgraph GHA["GitHub Actions  (release.yml)"]
+    subgraph GHA["GitHub Actions (release.yml)"]
         direction TB
-        V["validate\nruff lint + format check"]
-        T["test\npytest (49 tests)"]
-        B["build\nuv build wheel + sdist"]
-        PP["publish-pypi\ntwine upload"]
-        DCR["deploy-cloud-run\ngcloud builds submit\ngcloud run deploy\nimage tag: v0.x.x"]
-        GR["github-release\ngh release create"]
-        DK["docker\nbuild + push\nDockerHub image"]
+        V["validate<br/>ruff lint + format check"]
+        T["test<br/>pytest"]
+        B["build<br/>uv build wheel + sdist"]
+        PP["publish-pypi<br/>twine upload"]
+        DCR["deploy-cloud-run<br/>gcloud builds submit<br/>gcloud run deploy<br/>image tag: v0.x.x"]
+        GR["github-release<br/>gh release create"]
+        DK["docker<br/>build + push image"]
     end
 
     subgraph GCP2["Google Cloud"]
-        CB2["Cloud Build\nbuild container"]
-        AR2["Artifact Registry\ngcr.io/.../prompt-shell-enhancer:v0.x.x"]
-        CR2["Cloud Run\nprompt-shell-enhancer\n(live service)"]
-        HC["Health check\nGET /health → 200"]
+        CB2["Cloud Build<br/>build container"]
+        AR2["Artifact Registry<br/>gcr.io/.../prompt-shell-enhancer:v0.x.x"]
+        CR2["Cloud Run<br/>prompt-shell-enhancer"]
+        HC["Health check<br/>GET /health → 200"]
     end
 
-    subgraph MANUAL["Manual Re-deploy\n(deploy-cloud-run.yml)"]
-        WD["workflow_dispatch\n(secret rotation / hotfix)"]
+    subgraph MANUAL["Manual Re-deploy<br/>(deploy-cloud-run.yml)"]
+        WD["workflow_dispatch<br/>(secret rotation / hotfix)"]
     end
 
-    CODE -->|push to main| V
     TAG --> V
     V --> T --> B --> PP --> DCR
     PP --> GR
@@ -332,26 +311,34 @@ classDiagram
     }
 
     class TerminalState {
+        +str screen_buffer
         +str cwd
         +str shell
-        +str|None screen_buffer
         +CommandRecord[] last_commands
-        +str|None git_branch
         +str|None running_process
+        +str|None git_branch
+        +str|None hostname
+        +str|None username
+        +str|None session_id
+        +str backend
+        +str captured_at
     }
 
     class CommandRecord {
         +str command
         +int|None exit_code
-        +str timestamp
+        +str|None working_directory
+        +str|None timestamp
     }
 
     class DetectedError {
         +str error_type
         +str|None code
         +str|None file
-        +str|None line
-        +str|None message
+        +int|None line
+        +int|None column
+        +str message
+        +str severity
     }
 
     class ProjectInfo {
@@ -363,8 +350,8 @@ classDiagram
     class EnhanceRequest {
         +str voice_transcript
         +str cwd
-        +str git_branch
         +str shell
+        +str|None git_branch
         +str last_commands
         +str detected_errors
         +str screen_buffer_last_50
@@ -386,40 +373,41 @@ classDiagram
 
 ```mermaid
 flowchart TD
-    subgraph LOCAL2["Local Client  src/prompt_shell/"]
-        M["main.py\nCLI + hotkey daemon\npipeline orchestrator"]
+    subgraph LOCAL2["Local Client — src/prompt_shell/"]
+        M["main.py<br/>CLI + hotkey daemon<br/>AI pipeline orchestrator"]
 
-        subgraph T["terminal/"]
-            MON["monitor.py\nTerminalBackend ABC\n+ 4 implementations"]
-            CTX["context.py\nContextBuilder\nProjectInfo detection"]
-            ERR["error_patterns.py\nErrorDetectionEngine\n12+ regex families"]
-            SSHOT["screenshot.py\ncross-platform PNG\ncapture"]
+        subgraph T["terminal/ — Multimodal Context Agent"]
+            MON["monitor.py<br/>Terminal State Monitor<br/>+ 4 backend implementations"]
+            CTX["context.py<br/>Context Aggregator<br/>+ ProjectInfo detection"]
+            ERR["error_patterns.py<br/>Error Detection Engine<br/>12+ regex families"]
+            SSHOT["screenshot.py<br/>Vision Capture<br/>cross-platform PNG"]
         end
 
-        subgraph VO["voice/"]
-            CAP["capture.py\nsounddevice recording\nenergy-based VAD"]
-            TRN["transcribe.py\nfaster-whisper (local)\nOpenAI API\nApple Speech"]
+        subgraph VO["voice/ — Speech-to-Text"]
+            CAP["capture.py<br/>sounddevice recording<br/>energy-based VAD"]
+            TRN["transcribe.py<br/>Whisper AI (local)<br/>OpenAI API · Apple Speech"]
         end
 
-        subgraph EN["enhancer/"]
-            ECLI["enhancement_client.py\nhttpx async\nPOST /enhance"]
-            PB["prompt_builder.py\nfallback template\n(no LLM)"]
-            LC2["llm_client.py\nlitellm wrapper\nOllama / OpenAI / Anthropic"]
+        subgraph EN["enhancer/ — AI Enhancement"]
+            ECLI["enhancement_client.py<br/>AI Orchestrator<br/>+ fallback routing"]
+            PBL["prompt_builder.py<br/>Template Generator<br/>(offline fallback)"]
+            LC2["llm_client.py<br/>Local AI Model<br/>Ollama · retries"]
         end
 
         subgraph DV["delivery/"]
-            CLP["clipboard.py\npbcopy / wl-copy / xclip"]
-            ITP["iterm_paste.py\niTerm2 direct paste"]
-            NOT["notification.py\nosascript / notify-send"]
+            CLP["clipboard.py<br/>pbcopy · wl-copy · xclip"]
+            ITP["iterm_paste.py<br/>iTerm2 direct paste"]
+            FIL["file.py<br/>file delivery"]
+            NOT["notification.py<br/>osascript · notify-send"]
         end
 
-        CFG["config.py\nPydantic models\nYAML + env var substitution"]
+        CFG["config.py<br/>Pydantic models<br/>YAML + env var substitution"]
     end
 
-    subgraph CRS["Cloud Run  cloud_run_service/"]
-        CRMAIN["main.py\nFastAPI app\nPOST /enhance\nGET /health"]
-        CRPB["prompt_builder.py\n3-step meta-prompt\nrenderer"]
-        CRGC["gemini_client.py\ngoogle-genai SDK\nmultimodal support"]
+    subgraph CRS["☁️ Google Cloud AI Platform — cloud_run_service/"]
+        CRMAIN["main.py<br/>Cloud Run — Serverless API<br/>POST /enhance · GET /health"]
+        CRPB["prompt_builder.py<br/>Prompt Engineering Engine"]
+        CRGC["gemini_client.py<br/>Gemini 2.5 Flash Lite<br/>Multimodal AI"]
     end
 
     M --> T & VO & EN & DV & CFG
