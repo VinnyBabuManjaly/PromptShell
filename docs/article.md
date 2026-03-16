@@ -128,9 +128,9 @@ Nothing is a hard dependency. You can run PromptShell without tmux, without a mi
 Install:
 
 ```bash
-pip install prompt-shell
+pip install prompt-shell-cli
 # or
-uv pip install prompt-shell
+uv pip install prompt-shell-cli
 ```
 
 Initialize and set up:
