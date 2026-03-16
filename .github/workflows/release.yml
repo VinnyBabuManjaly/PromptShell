@@ -206,14 +206,6 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Enable required GCP APIs
-        run: |
-          gcloud services enable \
-            run.googleapis.com \
-            cloudbuild.googleapis.com \
-            containerregistry.googleapis.com \
-            --project "${{ secrets.GCP_PROJECT_ID }}"
-
       # Tag the image with the release version (e.g. gcr.io/.../prompt-shell-enhancer:v0.2.0)
       # so each release has a distinct, rollback-able image.
       - name: Build container image via Cloud Build
