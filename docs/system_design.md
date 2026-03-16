@@ -4,32 +4,32 @@
 ```mermaid
 flowchart TB
     subgraph INPUT["1 · Trigger"]
-        HK["Hotkey<br/><i>Ctrl+Alt+E — starts voice + capture</i>"]
+        HK["Hotkey<br/><i>Ctrl+Alt+E - starts voice + capture</i>"]
         CLI["CLI<br/><i>prompt-shell enhance 'text'</i>"]
     end
 
-    subgraph CAPTURE["2 · Capture (concurrent)"]
-        TM["Terminal Monitor<br/><i>tmux · iTerm2 · shell hook · generic</i>"]
-        SS["Screenshot Capture"]
-        VR["Voice Recorder + Transcriber<br/><i>hotkey only — skipped when text provided via CLI</i>"]
+    subgraph CAPTURE["2 · Multimodal Context Agent"]
+        TM["Terminal State Monitor<br/><i>tmux · iTerm2 · shell hook · generic</i>"]
+        SS["Vision Capture<br/><i>terminal screenshot (PNG)</i>"]
+        VR["Speech-to-Text (Whisper AI)<br/><i>hotkey only . local transcription</i>"]
     end
 
     subgraph BUILD["3 · Build"]
-        CB["Context Builder<br/><i>error detection · project detection</i>"]
+        CB["Context Aggregator<br/><i>error detection · project detection</i>"]
     end
 
-    subgraph ENHANCE["4 · Enhance"]
-        EC["Enhancement Client"]
+    subgraph ENHANCE["4 · AI Enhancement"]
+        EC["AI Orchestrator"]
     end
 
-    subgraph GCP["☁️ Google Cloud"]
-        CR["Cloud Run — FastAPI"]
-        PB["Meta-Prompt Builder"]
-        GM["Gemini 2.5 Flash Lite<br/><i>multimodal: text + screenshot</i>"]
+    subgraph GCP["☁️ Google Cloud AI Platform"]
+        CR["Cloud Run - Serverless API"]
+        PB["Prompt Engineering Engine"]
+        GM["Gemini 2.5 Flash Lite<br/><i>Multimodal AI (text + vision)</i>"]
     end
 
-    subgraph FALLBACK["Local Fallback"]
-        LLM["Local LLM<br/><i>Ollama</i>"]
+    subgraph FALLBACK["Offline AI Fallback"]
+        LLM["Local AI Model<br/><i>Ollama</i>"]
         TPL["Template Generator"]
     end
 
@@ -47,16 +47,16 @@ flowchart TB
 
     CB --> EC
 
-    EC -- "HTTP POST /enhance" --> CR
+    EC -- "Multimodal API Request" --> CR
     CR --> PB --> GM
     GM --> CR
-    CR -- "enhanced prompt" --> EC
+    CR -- "AI-Enhanced Prompt" --> EC
 
     EC -. "Cloud Run unreachable" .-> LLM
     LLM -. "LLM unavailable" .-> TPL
 
-    LLM -- "enhanced prompt" --> EC
-    TPL -- "fallback prompt" --> EC
+    LLM -- "AI-Enhanced Prompt" --> EC
+    TPL -- "Fallback Prompt" --> EC
 
     EC --> DL
 ```
@@ -68,14 +68,14 @@ flowchart TB
 sequenceDiagram
     actor User
     participant HK as Hotkey Daemon
-    participant SC as Screenshot Capture
-    participant VC as Voice Capture
-    participant TR as Transcription
-    participant TM as Terminal Monitor
-    participant CB as Context Builder
-    participant EC as Enhancement Client
-    participant CR as Cloud Run
-    participant GM as Gemini 2.5 Flash Lite
+    participant SC as Vision Capture
+    participant VC as Speech-to-Text
+    participant TR as Whisper AI
+    participant TM as Terminal State Monitor
+    participant CB as Context Aggregator
+    participant EC as AI Orchestrator
+    participant CR as Cloud Run (Serverless API)
+    participant GM as Gemini 2.5 Flash Lite (Multimodal AI)
     participant DL as Delivery Engine
 
     User->>HK: Ctrl+Alt+E
@@ -102,21 +102,21 @@ sequenceDiagram
     CB->>CB: detect_project(cwd)
     CB-->>EC: summary dict
 
-    EC->>CR: POST /enhance (JSON)
+    EC->>CR: Multimodal API Request (JSON)
     Note over EC,CR: voice_transcript, cwd, screen_buffer,<br/>detected_errors, screenshot_b64, ...
 
-    CR->>CR: build_meta_prompt(payload)
+    CR->>CR: Prompt Engineering Engine
     Note over CR: Step 1: read screenshot<br/>Step 2: classify intent<br/>Step 3: write enhanced prompt
 
     CR->>GM: generate_content([text_part, image_part])
     GM-->>CR: enhanced prompt text
 
-    CR-->>EC: {"enhanced_prompt": "..."}
+    CR-->>EC: AI-Enhanced Prompt
 
     alt Cloud Run unreachable
-        EC->>EC: fall back to local LLM (litellm)
+        EC->>EC: fall back to Local AI Model (Ollama)
         alt LLM unavailable
-            EC->>EC: fall back to template
+            EC->>EC: fall back to Template Generator
         end
     end
 
@@ -171,7 +171,7 @@ flowchart LR
         SS["screenshot_b64<br/>PNG base64"]
     end
 
-    subgraph BUILDER["Meta-Prompt Builder (Cloud Run)"]
+    subgraph BUILDER["Prompt Engineering Engine (Cloud Run)"]
         S1["STEP 1<br/>Read screenshot<br/>as ground truth"]
         S2["STEP 2<br/>Classify intent<br/>fix_error / explain /<br/>refactor / add_feature /<br/>write_test / debug"]
         S3["STEP 3<br/>Write enhanced prompt<br/>imperative sentence<br/>+ exact specifics"]
@@ -184,7 +184,7 @@ flowchart LR
     end
 
     subgraph OUTPUT["Response"]
-        EP["Enhanced Prompt<br/>(plain text string)"]
+        EP["AI-Enhanced Prompt<br/>(plain text string)"]
     end
 
     INPUT --> BUILDER
@@ -221,7 +221,7 @@ flowchart TD
     R1 & R2 & R3 & R4 & R5 & R6 & R7 & R8 & R9 & R10 & R11 & R12 --> OUT
 
     OUT["DetectedError[]<br/>{error_type, code, file, line, column, message, severity}"]
-    OUT --> CB["Context Builder<br/>→ ContextPayload.detected_errors"]
+    OUT --> CB["Context Aggregator<br/>→ ContextPayload.detected_errors"]
 ```
 
 ---
@@ -230,24 +230,24 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    START["Enhancement Client<br/>enhance_with_fallback()"] --> HAS_URL
+    START["AI Orchestrator<br/>enhance_with_fallback()"] --> HAS_URL
 
     HAS_URL{"provider == gemini<br/>and cloud_run_url set?"}
-    HAS_URL -->|Yes| CR["POST /enhance<br/>to Cloud Run"]
+    HAS_URL -->|Yes| CR["Multimodal API Request<br/>to Cloud Run"]
     HAS_URL -->|No| LOCAL
 
     CR --> CROK{"Cloud Run<br/>responded 2xx?"}
-    CROK -->|Yes| OK["✅ Gemini-enhanced prompt<br/>(multimodal, structured)"]
-    CROK -->|No| LOCAL["Local LLM<br/>enhance_prompt() via litellm"]
+    CROK -->|Yes| OK["✅ Gemini AI-Enhanced Prompt<br/>(multimodal, structured)"]
+    CROK -->|No| LOCAL["Local AI Model<br/>Ollama via litellm"]
 
     LOCAL --> LLMOK{"LLM responded<br/>after retries?"}
-    LLMOK -->|Yes| OK2["✅ Local LLM-enhanced prompt"]
+    LLMOK -->|Yes| OK2["✅ Local AI-Enhanced Prompt"]
     LLMOK -->|No| TPL
 
-    TPL["📄 Template fallback<br/>build_fallback_prompt(summary)<br/>always succeeds"]
-    TPL --> OK3["✅ Template prompt"]
+    TPL["📄 Template Generator<br/>build_fallback_prompt(summary)<br/>always succeeds"]
+    TPL --> OK3["✅ Fallback Prompt"]
 
-    OK --> EC["Enhancement Client<br/>returns EnhanceResult"]
+    OK --> EC["AI Orchestrator<br/>returns EnhanceResult"]
     OK2 --> EC
     OK3 --> EC
 
@@ -374,24 +374,24 @@ classDiagram
 ```mermaid
 flowchart TD
     subgraph LOCAL2["Local Client — src/prompt_shell/"]
-        M["main.py<br/>CLI + hotkey daemon<br/>pipeline orchestrator"]
+        M["main.py<br/>CLI + hotkey daemon<br/>AI pipeline orchestrator"]
 
-        subgraph T["terminal/"]
-            MON["monitor.py<br/>TerminalBackend ABC<br/>+ 4 implementations"]
-            CTX["context.py<br/>ContextBuilder<br/>+ ProjectInfo detection"]
-            ERR["error_patterns.py<br/>ErrorDetectionEngine<br/>12+ regex families"]
-            SSHOT["screenshot.py<br/>cross-platform PNG capture"]
+        subgraph T["terminal/ — Multimodal Context Agent"]
+            MON["monitor.py<br/>Terminal State Monitor<br/>+ 4 backend implementations"]
+            CTX["context.py<br/>Context Aggregator<br/>+ ProjectInfo detection"]
+            ERR["error_patterns.py<br/>Error Detection Engine<br/>12+ regex families"]
+            SSHOT["screenshot.py<br/>Vision Capture<br/>cross-platform PNG"]
         end
 
-        subgraph VO["voice/"]
+        subgraph VO["voice/ — Speech-to-Text"]
             CAP["capture.py<br/>sounddevice recording<br/>energy-based VAD"]
-            TRN["transcribe.py<br/>faster-whisper (local)<br/>OpenAI API · Apple Speech"]
+            TRN["transcribe.py<br/>Whisper AI (local)<br/>OpenAI API · Apple Speech"]
         end
 
-        subgraph EN["enhancer/"]
-            ECLI["enhancement_client.py<br/>Cloud Run client (httpx)<br/>+ fallback routing"]
-            PBL["prompt_builder.py<br/>fallback template<br/>(no LLM)"]
-            LC2["llm_client.py<br/>litellm wrapper<br/>Ollama · retries"]
+        subgraph EN["enhancer/ — AI Enhancement"]
+            ECLI["enhancement_client.py<br/>AI Orchestrator<br/>+ fallback routing"]
+            PBL["prompt_builder.py<br/>Template Generator<br/>(offline fallback)"]
+            LC2["llm_client.py<br/>Local AI Model<br/>Ollama · retries"]
         end
 
         subgraph DV["delivery/"]
@@ -404,10 +404,10 @@ flowchart TD
         CFG["config.py<br/>Pydantic models<br/>YAML + env var substitution"]
     end
 
-    subgraph CRS["Cloud Run — cloud_run_service/"]
-        CRMAIN["main.py<br/>FastAPI app<br/>POST /enhance · GET /health"]
-        CRPB["prompt_builder.py<br/>3-step meta-prompt renderer"]
-        CRGC["gemini_client.py<br/>google-genai SDK<br/>multimodal support"]
+    subgraph CRS["☁️ Google Cloud AI Platform — cloud_run_service/"]
+        CRMAIN["main.py<br/>Cloud Run — Serverless API<br/>POST /enhance · GET /health"]
+        CRPB["prompt_builder.py<br/>Prompt Engineering Engine"]
+        CRGC["gemini_client.py<br/>Gemini 2.5 Flash Lite<br/>Multimodal AI"]
     end
 
     M --> T & VO & EN & DV & CFG

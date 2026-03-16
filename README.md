@@ -179,11 +179,73 @@ CWD: ~/project/backend, branch: feature/auth-refactor
 
 ## Architecture
 
+```mermaid
+flowchart TB
+    subgraph INPUT["1 · Trigger"]
+        HK["Hotkey<br/><i>Ctrl+Alt+E - starts voice + capture</i>"]
+        CLI["CLI<br/><i>prompt-shell enhance 'text'</i>"]
+    end
+
+    subgraph CAPTURE["2 · Multimodal Context Agent"]
+        TM["Terminal State Monitor<br/><i>tmux · iTerm2 · shell hook · generic</i>"]
+        SS["Vision Capture<br/><i>terminal screenshot (PNG)</i>"]
+        VR["Speech-to-Text (Whisper AI)<br/><i>hotkey only . local transcription</i>"]
+    end
+
+    subgraph BUILD["3 · Build"]
+        CB["Context Aggregator<br/><i>error detection · project detection</i>"]
+    end
+
+    subgraph ENHANCE["4 · AI Enhancement"]
+        EC["AI Orchestrator"]
+    end
+
+    subgraph GCP["☁️ Google Cloud AI Platform"]
+        CR["Cloud Run - Serverless API"]
+        PB["Prompt Engineering Engine"]
+        GM["Gemini 2.5 Flash Lite<br/><i>Multimodal AI (text + vision)</i>"]
+    end
+
+    subgraph FALLBACK["Offline AI Fallback"]
+        LLM["Local AI Model<br/><i>Ollama</i>"]
+        TPL["Template Generator"]
+    end
+
+    subgraph OUTPUT["5 · Deliver"]
+        DL["Clipboard · File · iTerm2 Paste<br/><i>+ Desktop Notification</i>"]
+    end
+
+    HK --> TM & SS & VR
+    CLI --> TM & SS
+    CLI -. "text input" .-> CB
+
+    TM --> CB
+    SS --> CB
+    VR --> CB
+
+    CB --> EC
+
+    EC -- "Multimodal API Request" --> CR
+    CR --> PB --> GM
+    GM --> CR
+    CR -- "AI-Enhanced Prompt" --> EC
+
+    EC -. "Cloud Run unreachable" .-> LLM
+    LLM -. "LLM unavailable" .-> TPL
+
+    LLM -- "AI-Enhanced Prompt" --> EC
+    TPL -- "Fallback Prompt" --> EC
+
+    EC --> DL
+```
+
 ![PromptShell Architecture](docs/architecture_diagram.png)
 
-Everything inside steps 1–5 runs on your machine. The only network call is
-the POST to Cloud Run (step 4). If Cloud Run is unreachable, the Enhancement
-Client falls back to a local LLM, then to a template — you always get output.
+PromptShell runs as a **multimodal AI pipeline** — text, voice, and vision feed
+into a single agentic context capture step. The AI Orchestrator routes the
+request to **Gemini Vision** on a **serverless Google Cloud backend**, with
+graceful degradation to an **offline AI model** if the cloud is unreachable.
+Everything except the Gemini call runs on-device.
 
 Full system design: [docs/system_design.md](docs/system_design.md).
 
@@ -296,7 +358,10 @@ echo "GEMINI_API_KEY=your_key_here" >> ~/.prompt-shell/env
 ```
 
 ```bash
-systemctl --user status prompt-shell
+systemctl --user status prompt-shell    # Check status
+systemctl --user restart prompt-shell   # Restart
+systemctl --user stop prompt-shell      # Stop
+systemctl --user disable prompt-shell   # Disable autostart
 journalctl --user -u prompt-shell -f    # Follow logs
 ```
 

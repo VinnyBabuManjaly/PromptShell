@@ -67,24 +67,19 @@
 
 ## [2:15–3:00] HOW IT WORKS — Architecture (45s)
 
-> Here's what happens under the hood in under two seconds.
+> Here's what happens under the hood.                                                                                                         
+   
+> The Multimodal Context Agent launches three captures concurrently — the Terminal State Monitor grabs the screen buffer, Vision Capture takes
+> a screenshot, and Speech-to-Text powered by Whisper AI transcribes your voice locally. Your voice never leaves your machine.               
 
-**[On screen]:** Show the architecture diagram (Mermaid from README).
+> The Context Aggregator assembles everything — errors, project type, git branch, screenshot —everything into a single payload.
 
-> **Step 1** — you press the hotkey. PromptShell launches three captures concurrently: terminal monitor grabs the screen buffer, screenshot capture takes a PNG, and voice recorder starts listening.
->
-> **Step 2** — your voice is transcribed locally by faster-whisper. Your voice never leaves your machine.
->
-> **Step 3** — the Context Builder aggregates everything — terminal state, detected errors, project type, git branch, screenshot — into a single payload.
->
-> **Step 4** — that payload hits **Cloud Run** via HTTP POST. The FastAPI service builds a 3-step meta-prompt and sends it to **Gemini 2.5 Flash Lite** with the screenshot attached as a multimodal input. Gemini returns the enhanced prompt.
->
-> **Step 5** — the enhanced prompt lands in your clipboard with a desktop notification. Done.
+> The AI Orchestrator sends a Multimodal API Request to the Google Cloud AI Platform — Cloud Run runs the Prompt Engineering Engine, which
+> feeds both text and screenshot to Gemini 2.5 Flash Lite as multimodal input. Back comes the AI-Enhanced Prompt.
 
-**[On screen]:** Highlight each step in the diagram as you narrate.
+> If Cloud Run is unreachable, the Offline AI Fallback kicks in — local model first, then a template. You always get output.
 
-> The entire local pipeline runs on-device. The only network call is to Cloud Run. Privacy by default.
-
+> Result lands in your clipboard. Done.
 ---
 
 ## [3:00–3:30] THE NUMBERS — Why It Matters (30s)

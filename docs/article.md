@@ -90,7 +90,7 @@ The Cloud Run service calls **Gemini 2.0 Flash** via the **Google GenAI SDK**. G
 
 The Cloud Run service scales to zero when idle, meaning it costs nothing when you're not using it. At demo and development scale (well under 1,500 requests/day), it runs entirely within Gemini's free tier.
 
-If the Cloud Run service is unreachable or returns an error, PromptShell doesn't give up. The Enhancement Client first falls back to a local LLM (Ollama via litellm). If that's also unavailable, it falls back to a template that concatenates your voice input with the detected errors and terminal context into a structured prompt. Not as polished as Gemini, but still far better than what you would have typed.
+If the Cloud Run service is unreachable or returns an error, PromptShell doesn't give up. The AI Orchestrator first falls back to a local AI model (Ollama via litellm). If that's also unavailable, it falls back to a template that concatenates your voice input with the detected errors and terminal context into a structured prompt. Not as polished as Gemini, but still far better than what you would have typed.
 
 ---
 

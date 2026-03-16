@@ -19,14 +19,14 @@ PromptShell uses a **split client/cloud architecture**. The local daemon handles
 │                      │         │                        │              │   │
 │                      │         ▼                        ▼              │   │
 │                      │  ┌──────────────────────────────────────────┐  │   │
-│                      │  │            Context Builder                │  │   │
+│                      │  │            Context Aggregator                │  │   │
 │                      │  │   (merge terminal + voice → ContextPayload│  │   │
 │                      │  └──────────────────┬───────────────────────┘  │   │
 │                      │                      │                          │   │
 │                      │                      │  HTTP POST /enhance      │   │
 │                      │                      ▼                          │   │
 │                      │  ┌──────────────────────────────────────────┐  │   │
-│                      │  │       Enhancement Client                  │  │   │
+│                      │  │       AI Orchestrator                  │  │   │
 │                      │  │  (sends ContextPayload to Cloud Run)      │  │   │
 │                      │  └──────────────────┬───────────────────────┘  │   │
 │                      │                      │                          │   │
@@ -50,7 +50,7 @@ PromptShell uses a **split client/cloud architecture**. The local daemon handles
 │  │  FastAPI  POST /enhance                                           │   │
 │  │                                                                   │   │
 │  │  ┌────────────────────────────────────────────────────────────┐  │   │
-│  │  │  Meta-Prompt Builder  (renders context into LLM prompt)     │  │   │
+│  │  │  Prompt Engineering Engine  (renders context into LLM prompt)     │  │   │
 │  │  └───────────────────────────┬────────────────────────────────┘  │   │
 │  │                              │                                    │   │
 │  │                              ▼                                    │   │
@@ -69,11 +69,11 @@ PromptShell uses a **split client/cloud architecture**. The local daemon handles
 
 ## Component Detail
 
-### 1. Terminal Monitor
+### 1. Terminal State Monitor
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│              Terminal Monitor (Multi-Backend)              │
+│              Terminal State Monitor (Multi-Backend)              │
 │                                                           │
 │  ┌──────────────────────────────────────────────────┐    │
 │  │ Backend Detector (auto mode)                      │    │
@@ -160,11 +160,11 @@ PromptShell uses a **split client/cloud architecture**. The local daemon handles
 
 ---
 
-### 3. Context Builder
+### 3. Context Aggregator
 
 ```
 ┌────────────────────────────────────────────────┐
-│              Context Builder                     │
+│              Context Aggregator                     │
 │                                                  │
 │  Input:                                          │
 │  ├── TerminalState (from Monitor)                │
@@ -202,7 +202,7 @@ The local client serializes `ContextPayload` as JSON and sends it via HTTP POST 
 │  ├── Input: ContextPayload (JSON)                        │
 │  │                                                       │
 │  │  ┌──────────────────────────────────────────────┐    │
-│  │  │  Meta-Prompt Builder                          │    │
+│  │  │  Prompt Engineering Engine                          │    │
 │  │  │                                               │    │
 │  │  │  Renders system prompt with:                  │    │
 │  │  │  - voice_transcript                           │    │
@@ -232,7 +232,7 @@ The local client serializes `ContextPayload` as JSON and sends it via HTTP POST 
 └──────────────────────────────────────────────────────────┘
 ```
 
-**Fallback**: If the Cloud Run service is unreachable or returns an error, the Enhancement Client falls back to a local LLM (Ollama via litellm). If the local LLM is also unavailable, it falls back to a template-based prompt. All paths return through the Enhancement Client — the user always gets a structured prompt, never a raw error.
+**Fallback**: If the Cloud Run service is unreachable or returns an error, the AI Orchestrator falls back to a local LLM (Ollama via litellm). If the local LLM is also unavailable, it falls back to a template-based prompt. All paths return through the AI Orchestrator — the user always gets a structured prompt, never a raw error.
 
 ---
 
@@ -351,9 +351,9 @@ gcloud run deploy prompt-shell-enhancer \
 | Voice Capture | No microphone permission | Show OS permission prompt. Log error. |
 | Voice Capture | No speech detected (timeout) | Cancel gracefully. Show "No speech detected" notification. |
 | Whisper | Model not downloaded | Auto-download on first use. Show progress notification. |
-| Cloud Run | Service unreachable / cold start timeout | Enhancement Client falls back to local LLM, then template. |
-| Cloud Run | Returns 5xx | Enhancement Client falls back to local LLM, then template. |
-| Gemini API | Rate limit / quota exceeded | Cloud Run returns 429; Enhancement Client falls back to local LLM, then template. |
+| Cloud Run | Service unreachable / cold start timeout | AI Orchestrator falls back to local LLM, then template. |
+| Cloud Run | Returns 5xx | AI Orchestrator falls back to local LLM, then template. |
+| Gemini API | Rate limit / quota exceeded | Cloud Run returns 429; AI Orchestrator falls back to local LLM, then template. |
 | Delivery | Clipboard failure | Fall back to file pipe + notification. |
 
 ---
