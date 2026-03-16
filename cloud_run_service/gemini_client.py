@@ -1,4 +1,4 @@
-"""Gemini 2.0 Flash client using the Google GenAI SDK."""
+"""Gemini 2.5 Flash Lite client using the Google GenAI SDK."""
 
 from __future__ import annotations
 

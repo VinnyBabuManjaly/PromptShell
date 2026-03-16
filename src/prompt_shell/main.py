@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import concurrent.futures
 import logging
+from dataclasses import replace
 from pathlib import Path
 
 import typer
@@ -120,6 +122,26 @@ async def run_pipeline(
                 logger.debug("Screenshot captured (%d b64 chars)", len(screenshot_b64))
         except Exception as e:
             logger.warning("Screenshot capture failed: %s (continuing without it)", e)
+
+    # When the backend didn't capture a screen buffer (shell_hook, generic), try
+    # OCR on the screenshot to populate it.  This enables error detection and gives
+    # the LLM structured text alongside the image.
+    if screenshot_b64 and not terminal_state.screen_buffer:
+        logger.info(
+            "Backend '%s' captured no screen_buffer — attempting OCR fallback",
+            terminal_state.backend,
+        )
+        from prompt_shell.terminal.ocr import ocr_screenshot
+
+        try:
+            ocr_text = await ocr_screenshot(base64.b64decode(screenshot_b64))
+            if ocr_text:
+                terminal_state = replace(terminal_state, screen_buffer=ocr_text)
+                logger.info("Screen buffer populated from OCR (%d chars)", len(ocr_text))
+            else:
+                logger.info("OCR returned no text")
+        except Exception as e:
+            logger.warning("OCR fallback failed: %s", e)
 
     builder = ContextBuilder()
     context = builder.build(
