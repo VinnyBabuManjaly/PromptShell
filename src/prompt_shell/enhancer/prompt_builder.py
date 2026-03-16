@@ -113,7 +113,7 @@ def build_meta_prompt(summary: dict) -> str:
                 "your ONLY source of terminal content. You MUST:\n"
                 "1. Read every line of terminal output visible in the screenshot\n"
                 "2. Transcribe all error messages, stack traces, and command output verbatim\n"
-                "3. Use the transcribed text as if it were the \"Terminal output\" section\n"
+                '3. Use the transcribed text as if it were the "Terminal output" section\n'
                 "Do not produce a vague or generic prompt — extract the specifics from "
                 "the screenshot."
             )
